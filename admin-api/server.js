@@ -42,6 +42,36 @@ const server=http.createServer(async(req,res)=>{res.setHeader('X-Frame-Options',
  if(route==='/api/session'&&req.method==='GET'){const s=await requireAuth(req,res);if(!s)return;return json(res,200,{csrf:s.csrf_token});}
  if(route==='/api/logout'&&req.method==='POST'){const s=await requireAuth(req,res,true);if(!s)return;await pool.query('DELETE FROM admin_sessions WHERE token_hash=$1',[s.token_hash]);return json(res,200,{ok:true},{'Set-Cookie':'nexa_session=; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=0'});}
  if(route==='/api/activity'&&req.method==='GET'){if(!await requireAuth(req,res))return;const r=await pool.query('SELECT id,action,created_at FROM catalog_revisions ORDER BY id DESC LIMIT 20');return json(res,200,{events:r.rows});}
+ // Provider checkout links, not account/API connectivity. No secrets are handled here.
+ if(route==='/api/providers'&&req.method==='GET'){
+   if(!await requireAuth(req,res))return;
+   const checkouts=await pool.query('SELECT product_id,provider,checkout_url,updated_at FROM product_checkout_links ORDER BY product_id,provider');
+   const states=await pool.query('SELECT provider,connection_status,linked_at FROM provider_connections ORDER BY provider');
+   return json(res,200,{checkouts:checkouts.rows,connections:states.rows,checkout_note:'Checkout cadastrado não significa conta conectada à API.'});
+ }
+ if(route==='/api/providers/eduzz-checkout'&&req.method==='PUT'){
+   if(!await requireAuth(req,res,true))return;
+   const b=await parse(req,4096);
+   if(!b||typeof b.product_id!=='string'||!/^[a-z0-9_-]{1,64}$/.test(b.product_id)||typeof b.checkout_url!=='string'||b.checkout_url.length>1800)return json(res,400,{error:'invalid_eduzz_checkout'});
+   const url=b.checkout_url.trim();
+   if(url){
+     let u;
+     try{u=new URL(url);}catch{return json(res,400,{error:'invalid_eduzz_checkout'});}
+     if(u.protocol!=='https:'||u.hostname!=='sun.eduzz.com'||u.port||u.username||u.password||u.hash||!/^\/[a-zA-Z0-9_-]{2,128}\/?$/.test(u.pathname))return json(res,400,{error:'invalid_eduzz_checkout'});
+   }
+   const exists=await pool.query('SELECT 1 FROM products WHERE id=$1',[b.product_id]);
+   if(exists.rowCount!==1)return json(res,404,{error:'product_not_found'});
+   const client=await pool.connect();
+   try{
+     await client.query('BEGIN');
+     if(url)await client.query(`INSERT INTO product_checkout_links(product_id,provider,checkout_url) VALUES($1,'eduzz',$2) ON CONFLICT (product_id,provider) DO UPDATE SET checkout_url=excluded.checkout_url,updated_at=now()`,[b.product_id,url]);
+     else await client.query("DELETE FROM product_checkout_links WHERE product_id=$1 AND provider='eduzz'",[b.product_id]);
+     await client.query('INSERT INTO admin_audit(event,detail) VALUES($1,$2)',[
+       'eduzz_checkout_configured',JSON.stringify({product_id:b.product_id,configured:!!url})]);
+     await client.query('COMMIT');
+     return json(res,200,{ok:true,configured:!!url,saved_to_database:true,site_changed:false,sales_api_connected:false});
+   }catch(e){await client.query('ROLLBACK');throw e;}finally{client.release();}
+ }
  if(route==='/api/products'&&req.method==='GET'){if(!await requireAuth(req,res))return;const r=await pool.query('SELECT id,name,description,price_cents,checkout_url,image_url,published FROM products ORDER BY id');return json(res,200,{products:r.rows});}
  if(route==='/api/products'&&req.method==='PUT'){if(!await requireAuth(req,res,true))return;const b=await parse(req);if(!Array.isArray(b.products)||b.products.length>100||!b.products.every(valid)||new Set(b.products.map(x=>x.id)).size!==b.products.length)return json(res,400,{error:'invalid_catalog'});const cx=await pool.connect();try{await cx.query('BEGIN');await cx.query('DELETE FROM products WHERE NOT(id=ANY($1::text[]))',[b.products.map(p=>p.id)]);for(const p of b.products)await cx.query('INSERT INTO products(id,name,description,price_cents,checkout_url,image_url,published) VALUES($1,$2,$3,$4,$5,$6,$7) ON CONFLICT (id) DO UPDATE SET name=excluded.name,description=excluded.description,price_cents=excluded.price_cents,checkout_url=excluded.checkout_url,image_url=excluded.image_url,published=excluded.published,updated_at=now()',[p.id,p.name,p.description,p.price_cents,p.checkout_url,p.image_url,p.published]);await cx.query('INSERT INTO catalog_revisions(catalog,action) VALUES($1,$2)',[JSON.stringify(b.products),'draft_save']);await cx.query('INSERT INTO admin_audit(event,detail) VALUES($1,$2)',['draft_save',JSON.stringify({count:b.products.length})]);await cx.query('COMMIT');return json(res,200,{saved:b.products.length,published_to_site:false});}catch(e){await cx.query('ROLLBACK');throw e;}finally{cx.release();}}
  // Preview compares the exact database draft with the current GitHub storefront.
