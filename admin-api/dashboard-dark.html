@@ -12,6 +12,8 @@
 @media(max-width:1100px){.sidebar{width:220px}.main-wrap{margin-left:220px;width:calc(100% - 220px)}.topbar{padding:0 30px}.workspace{padding:35px 30px 60px}.two-grid{grid-template-columns:1fr 1fr}.stat-card{padding:20px}.product-shell{grid-template-columns:1fr 1.3fr}}
 @media(max-width:780px){.sidebar{transform:translateX(-101%);transition:transform .18s;width:265px}.sidebar.open{transform:translateX(0)}.scrim:not([hidden]){position:fixed;inset:0;background:#0009;z-index:25;display:block}.main-wrap{margin:0;width:100%}.menu-btn,.mobile-close{display:inline-flex}.mobile-close{margin-left:auto}.topbar{height:66px;padding:0 20px}.top-right{gap:13px}.secure-pill{display:none}.workspace{padding:28px 19px 50px}.stats-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.stats-grid>.stat-card:last-child{grid-column:span 2}.two-grid,.product-shell{grid-template-columns:1fr}.page-intro{align-items:flex-start}.footer{padding:20px;flex-wrap:wrap}.bar-caption{font-size:11px}}
 @media(max-width:490px){h1{font-size:25px}.page-intro{flex-direction:column;align-items:stretch}.page-intro>.primary-btn,.intro-actions>.primary-btn{width:100%}.intro-actions{width:100%}.intro-actions>*{flex:1}.stats-grid{grid-template-columns:1fr 1fr;gap:11px}.stat-card{padding:18px 14px;min-height:145px}.stat-head{font-size:11px}.stat-value{font-size:28px}.stat-foot{font-size:10px}.panel-chart,.panel-system,.data-surface,.catalog-panel,.edit-panel,.activity-box,.settings-box{padding:20px 17px}.two-fields{grid-template-columns:1fr}.topbar .small-link{display:none}.footer span:last-child{display:none}.editor-actions{flex-wrap:wrap}}
+
+.publish-box{max-width:960px}.publish-items{display:grid;gap:12px;margin:24px 0}.publish-item{padding:16px 18px;border:1px solid var(--line);border-radius:11px;background:var(--surface2)}.publish-item strong{display:block;font-size:14px;margin-bottom:8px}.publish-item p{font-size:12px;color:var(--muted);margin:4px 0;overflow-wrap:anywhere}.publish-confirm{display:flex;gap:12px;align-items:flex-start;padding:18px 0;color:#d6ded8;font-size:12px}.publish-confirm input{width:18px;height:18px;flex:none;accent-color:#b9dfbd}.publish-box .editor-actions{display:flex;flex-wrap:wrap;gap:10px}.publish-box .outline-btn{display:inline-flex;align-items:center;text-decoration:none}.publish-box button:disabled{opacity:.43;cursor:not-allowed}
 </style>
   
 </head>
@@ -28,6 +30,7 @@
         <button type="button" class="navitem active" data-page="dashboard" aria-current="page"><span class="navglyph">▦</span> Visão geral</button>
         <button type="button" class="navitem" data-page="products"><span class="navglyph">▤</span> Produtos <span class="nav-count" id="sideCount">—</span></button>
         <button type="button" class="navitem" data-page="activity"><span class="navglyph">◷</span> Atividades</button>
+        <button type="button" class="navitem" data-page="publish"><span class="navglyph">↑</span> Publicar</button>
         <button type="button" class="navitem" data-page="settings"><span class="navglyph">⚙</span> Configurações</button>
       </nav>
       <div class="sidebar-bottom">
@@ -74,6 +77,18 @@
           </div>
         </section>
         <section data-screen="activity" class="screen" hidden><div class="page-intro"><div><div class="eyebrow">AUDITORIA</div><h1>Atividades</h1><p>Últimos registros de alterações salvas no banco.</p></div><button type="button" id="refreshActivity" class="outline-btn">↻ Atualizar</button></div><section class="surface activity-box"><div class="section-title"><div><h2>Histórico de rascunhos</h2><p>Registros reais, sem eventos fictícios</p></div></div><div id="activityList" class="activity-list"><p class="empty-hint">Carregando histórico...</p></div></section></section>
+        <section data-screen="publish" class="screen" hidden>
+          <div class="page-intro"><div><div class="eyebrow">PUBLICAÇÃO CONTROLADA</div><h1>Publicar na loja</h1><p>Confira os dados antes de atualizar o site público.</p></div><button class="outline-btn" id="refreshPublish" type="button">↻ Revisar novamente</button></div>
+          <section class="surface settings-box publish-box">
+            <div class="section-title"><div><h2>Prévia do catálogo</h2><p>Comparação do rascunho salvo com a página atual no GitHub.</p></div><span class="meta-pill">Revisão obrigatória</span></div>
+            <p id="publishState" class="field-help">Abra esta seção para conferir os dados.</p>
+            <div id="publishItems" class="publish-items"></div>
+            <p class="field-help">A publicação altera apenas nome, descrição, preço exibido e link dos <strong>dois e-books existentes</strong>. Não altera preços na Kiwify, não cria novos produtos e não envia capas. Após publicar, confira o valor real nos dois checkouts.</p>
+            <label class="publish-confirm"><input id="confirmPrices" type="checkbox"> Conferi que os preços cadastrados na Kiwify são iguais aos que aparecerão na loja.</label>
+            <div class="editor-actions"><button id="publishNow" type="button" class="primary-btn" disabled>Publicar alterações</button><a class="outline-btn" href="https://nexa-digital-academy.onrender.com/#ebooks" target="_blank" rel="noopener noreferrer">Ver loja ↗</a></div>
+            <p class="field-help" id="publishHelp">Para publicar diretamente, é preciso configurar a credencial de publicação no servidor.</p>
+          </section>
+        </section>
         <section data-screen="settings" class="screen" hidden><div class="page-intro"><div><div class="eyebrow">SISTEMA</div><h1>Configurações</h1><p>Conexões e informações da administração.</p></div></div><section class="surface settings-box"><h2>Informações do ambiente</h2><dl><div><dt>Área administrativa</dt><dd>Protegida por senha e sessão</dd></div><div><dt>Armazenamento de rascunhos</dt><dd>Banco Neon</dd></div><div><dt>Loja pública</dt><dd>Nexa Digital Academy no Render</dd></div><div><dt>Processamento de pagamentos</dt><dd>Kiwify</dd></div><div><dt>Publicação automática</dt><dd class="orange-text">Não disponível nesta versão</dd></div></dl><div class="settings-actions"><button type="button" id="backupSettings" class="outline-btn">↓ Exportar catálogo</button><button type="button" id="logoutSettings" class="danger-btn">Encerrar sessão</button></div></section></section>
       </main>
       <footer class="footer"><span>© 2026 Nexa Digital Academy</span><span>Painel de gestão · Dados do catálogo</span></footer>
@@ -98,7 +113,7 @@
     let data;try{data=await response.json();}catch{throw new Error('O servidor não retornou uma resposta válida.');}
     if(!response.ok)throw new Error(({
       csrf:'Sessão inválida. Atualize a página.',invalid_catalog:'Confira os campos do produto, especialmente o checkout da Kiwify.',
-      service_unavailable:'Serviço indisponível. Tente novamente.',publication_disabled_pending_review:'Publicação na loja ainda não habilitada.'
+      service_unavailable:'Serviço indisponível. Tente novamente.',publisher_not_configured:'A publicação ainda precisa ser autorizada no Render.',site_changed_since_preview:'A loja foi alterada desde a prévia. Revise novamente.',catalog_changed_since_preview:'O rascunho mudou desde a prévia. Revise novamente.',github_authorization_denied:'A credencial do GitHub não tem permissão de publicação.',github_conflict_or_branch_protection:'O GitHub bloqueou a alteração. Revise as regras de proteção da branch.',only_two_original_products_supported:'Publicação temporariamente limitada aos dois e-books originais.',hidden_products_not_supported:'Publicação de produtos ocultos ainda não disponível.',image_upload_not_supported:'Envio de capas ainda não disponível na publicação.',site_template_changed:'O layout da loja mudou. Publicação cancelada por segurança.',publication_disabled_pending_review:'Publicação na loja ainda não habilitada.'
     })[data.error] || 'Não foi possível concluir a operação.');
     return data;
   }
@@ -110,9 +125,10 @@
     dirty=false;
     document.querySelectorAll('[data-screen]').forEach(x=>x.hidden=x.dataset.screen!==name);
     document.querySelectorAll('[data-page]').forEach(x=>{let active=x.dataset.page===name;x.classList.toggle('active',active);if(active)x.setAttribute('aria-current','page');else x.removeAttribute('aria-current');});
-    $('breadcrumb').textContent=({dashboard:'Visão geral',products:'Produtos',activity:'Atividades',settings:'Configurações'})[name]||name;
+    $('breadcrumb').textContent=({dashboard:'Visão geral',products:'Produtos',activity:'Atividades',settings:'Configurações',publish:'Publicar'})[name]||name;
     closeMobile();window.scrollTo({top:0,behavior:'smooth'});
     if(name==='activity')loadActivity();
+    if(name==='publish')loadPublishPreview();
     if(name==='products')renderProducts();
   }
   function updateDashboard(){
@@ -200,6 +216,44 @@
     }catch(e){target.replaceChildren(node('p','empty-hint','Não foi possível carregar o histórico.'));}
   }
   async function logout(){try{await api('logout',{method:'POST'});location.assign('/login');}catch(e){notify(e.message,true);}}
+  let publishPreview=null;
+  async function loadPublishPreview(){
+    publishPreview=null;
+    $('publishNow').disabled=true;
+    $('confirmPrices').checked=false;
+    $('publishItems').replaceChildren();
+    $('publishState').textContent='Consultando o site e o catálogo...';
+    $('publishHelp').textContent='A publicação só acontece após sua confirmação.';
+    try{
+      const data=await api('publish/preview');
+      publishPreview=data;
+      for(const item of data.changes){
+        const box=node('div','publish-item');
+        box.append(node('strong','',item.title+' · '+item.price));
+        box.append(node('p','','Descrição: '+(item.description||'—')));
+        box.append(node('p','','Checkout: '+item.checkout));
+        $('publishItems').append(box);
+      }
+      $('publishState').textContent=data.changed?'Existem alterações a comparar e publicar.':'A loja já corresponde aos campos suportados do catálogo.';
+      $('publishHelp').textContent=data.publisher_enabled
+        ?'Após publicar, o GitHub acionará o deploy do Render. Aguarde a confirmação antes de divulgar alterações.'
+        :'Publicação desativada: falta configurar GITHUB_PUBLISH_TOKEN nas variáveis protegidas do Render. A prévia pode ser consultada normalmente.';
+      togglePublish();
+    }catch(error){$('publishState').textContent='Prévia indisponível: '+error.message;$('publishHelp').textContent='Nenhuma alteração foi enviada à loja.';}
+  }
+  function togglePublish(){
+    $('publishNow').disabled=!(publishPreview?.publisher_enabled&&publishPreview.changed&&$('confirmPrices').checked);
+  }
+  async function publishToStore(){
+    if(!publishPreview?.publisher_enabled||!publishPreview.changed||!$('confirmPrices').checked)return;
+    if(!confirm('Publicar os dois produtos na loja agora? Os preços da Kiwify NÃO são alterados automaticamente.'))return;
+    $('publishNow').disabled=true;
+    try{
+      const r=await api('publish',{method:'POST',body:JSON.stringify({current_sha:publishPreview.current_sha,catalog_digest:publishPreview.catalog_digest,confirm_checkout_prices:true})});
+      notify(r.changed?'Alterações enviadas ao GitHub. Confira o deploy no Render.':'A loja já está atualizada.');
+      await loadPublishPreview();
+    }catch(error){notify(error.message,true);await loadPublishPreview();}
+  }
   function bindings(){
     document.querySelectorAll('[data-page]').forEach(btn=>btn.addEventListener('click',()=>screen(btn.dataset.page)));
     $('openSidebar').addEventListener('click',()=>{$('sidebar').classList.add('open');$('scrim').hidden=false;});
@@ -209,6 +263,9 @@
     $('openProducts').addEventListener('click',()=>screen('products'));
     ['backupTop','backupSettings'].forEach(id=>$(id).addEventListener('click',backup));
     $('refreshActivity').addEventListener('click',loadActivity);
+    $('refreshPublish').addEventListener('click',loadPublishPreview);
+    $('confirmPrices').addEventListener('change',togglePublish);
+    $('publishNow').addEventListener('click',publishToStore);
     $('productSearch').addEventListener('input',renderProducts);$('productFilter').addEventListener('change',renderProducts);
     $('productForm').addEventListener('input',()=>{dirty=true;});$('productForm').addEventListener('change',()=>{dirty=true;});
     $('productForm').addEventListener('submit',async ev=>{
