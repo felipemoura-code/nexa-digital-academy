@@ -102,7 +102,7 @@ const server=http.createServer(async(req,res)=>{res.setHeader('X-Frame-Options',
    if(!await requireAuth(req,res))return;
    const draft=(await pool.query('SELECT id,name,description,price_cents,checkout_url,image_url,published FROM products ORDER BY id')).rows;
    try{
-     publisher.renderSite((await publisher.getStore('')).html,draft);
+     publisher.assertCatalog(draft);
      const pub=(await pool.query('SELECT catalog,version FROM published_catalog WHERE id=1')).rows[0];
      const current=pub?.catalog||[];
      const changed=publisher.digest(draft)!==publisher.digest(current);
@@ -125,7 +125,7 @@ const server=http.createServer(async(req,res)=>{res.setHeader('X-Frame-Options',
      const draft=(await cx.query('SELECT id,name,description,price_cents,checkout_url,image_url,published FROM products ORDER BY id')).rows;
      if(publisher.digest(draft)!==reqBody.catalog_digest){await cx.query('ROLLBACK');return json(res,409,{error:'catalog_changed_since_preview'});}
      // Existing site only supports two products and official Kiwify checkouts.
-     publisher.renderSite((await publisher.getStore('')).html,draft);
+     publisher.assertCatalog(draft);
      if(publisher.digest(pub.catalog)===publisher.digest(draft)){await cx.query('ROLLBACK');return json(res,200,{ok:true,changed:false});}
      await cx.query('UPDATE published_catalog SET catalog=$1::jsonb,version=version+1,published_at=now() WHERE id=1',[JSON.stringify(draft)]);
      await cx.query('INSERT INTO catalog_revisions(catalog,action) VALUES($1,$2)',[JSON.stringify(draft),'site_publish']);
