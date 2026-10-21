@@ -106,10 +106,10 @@
             <p class="field-help">A publicação altera apenas nome, descrição, preço exibido e link dos <strong>dois e-books existentes</strong>. Não altera preços na Kiwify, não cria novos produtos e não envia capas. Após publicar, confira o valor real nos dois checkouts.</p>
             <label class="publish-confirm"><input id="confirmPrices" type="checkbox"> Conferi que os preços cadastrados na Kiwify são iguais aos que aparecerão na loja.</label>
             <div class="editor-actions"><button id="publishNow" type="button" class="primary-btn" disabled>Publicar alterações</button><a class="outline-btn" href="https://nexa-digital-academy.onrender.com/#ebooks" target="_blank" rel="noopener noreferrer">Ver loja ↗</a></div>
-            <p class="field-help" id="publishHelp">Para publicar diretamente, é preciso configurar a credencial de publicação no servidor.</p>
+            <p class="field-help" id="publishHelp">Faça a revisão antes de publicar; nenhuma senha adicional é necessária.</p>
           </section>
         </section>
-        <section data-screen="settings" class="screen" hidden><div class="page-intro"><div><div class="eyebrow">SISTEMA</div><h1>Configurações</h1><p>Conexões e informações da administração.</p></div></div><section class="surface settings-box"><h2>Informações do ambiente</h2><dl><div><dt>Área administrativa</dt><dd>Protegida por senha e sessão</dd></div><div><dt>Armazenamento de rascunhos</dt><dd>Banco Neon</dd></div><div><dt>Loja pública</dt><dd>Nexa Digital Academy no Render</dd></div><div><dt>Checkouts usados no site</dt><dd>Kiwify — 2 produtos</dd></div><div><dt>Eduzz</dt><dd class="orange-text" id="eduzzSettingsStatus">Checkout não cadastrado · API não conectada</dd></div><div><dt>Publicação no site</dt><dd class="orange-text">Preparada — falta autorização restrita do GitHub e teste final</dd></div></dl><div class="settings-actions"><button type="button" id="backupSettings" class="outline-btn">↓ Exportar catálogo</button><button type="button" id="logoutSettings" class="danger-btn">Encerrar sessão</button></div></section></section>
+        <section data-screen="settings" class="screen" hidden><div class="page-intro"><div><div class="eyebrow">SISTEMA</div><h1>Configurações</h1><p>Conexões e informações da administração.</p></div></div><section class="surface settings-box"><h2>Informações do ambiente</h2><dl><div><dt>Área administrativa</dt><dd>Protegida por senha e sessão</dd></div><div><dt>Armazenamento de rascunhos</dt><dd>Banco Neon</dd></div><div><dt>Loja pública</dt><dd>Nexa Digital Academy no Render</dd></div><div><dt>Checkouts usados no site</dt><dd>Kiwify — 2 produtos</dd></div><div><dt>Eduzz</dt><dd class="orange-text" id="eduzzSettingsStatus">Checkout não cadastrado · API não conectada</dd></div><div><dt>Publicação no site</dt><dd class="orange-text">Publicação direta pelo banco, sujeita a homologação</dd></div></dl><div class="settings-actions"><button type="button" id="backupSettings" class="outline-btn">↓ Exportar catálogo</button><button type="button" id="logoutSettings" class="danger-btn">Encerrar sessão</button></div></section></section>
       </main>
       <footer class="footer"><span>© 2026 Nexa Digital Academy</span><span>Painel de gestão · Dados do catálogo</span></footer>
     </div>
@@ -281,8 +281,8 @@
       }
       $('publishState').textContent=data.changed?'Existem alterações a comparar e publicar.':'A loja já corresponde aos campos suportados do catálogo.';
       $('publishHelp').textContent=data.publisher_enabled
-        ?'Após publicar, o GitHub acionará o deploy do Render. Aguarde a confirmação antes de divulgar alterações.'
-        :'Publicação desativada: falta configurar GITHUB_PUBLISH_TOKEN nas variáveis protegidas do Render. A prévia pode ser consultada normalmente.';
+        ?'Publicação direta: as alterações aprovadas passam a aparecer na loja, sem novo deploy do GitHub.'
+        :'Publicação indisponível. Confira o estado do servidor.';
       togglePublish();
     }catch(error){$('publishState').textContent='Prévia indisponível: '+error.message;$('publishHelp').textContent='Nenhuma alteração foi enviada à loja.';}
   }
@@ -294,8 +294,8 @@
     if(!confirm('Publicar os dois produtos na loja agora? Os preços da Kiwify NÃO são alterados automaticamente.'))return;
     $('publishNow').disabled=true;
     try{
-      const r=await api('publish',{method:'POST',body:JSON.stringify({current_sha:publishPreview.current_sha,catalog_digest:publishPreview.catalog_digest,confirm_checkout_prices:true})});
-      notify(r.changed?'Alterações enviadas ao GitHub. Confira o deploy no Render.':'A loja já está atualizada.');
+      const r=await api('publish',{method:'POST',body:JSON.stringify({current_version:publishPreview.current_version,catalog_digest:publishPreview.catalog_digest,confirm_checkout_prices:true})});
+      notify(r.changed?'Catálogo publicado com sucesso. A loja já pode receber a nova versão.':'A loja já está atualizada.');
       await loadPublishPreview();
     }catch(error){notify(error.message,true);await loadPublishPreview();}
   }
