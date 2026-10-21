@@ -1,5 +1,6 @@
 'use strict';
 const fs=require('node:fs');
+const publisher=require('./publisher');
 const http=require('node:http'),crypto=require('node:crypto'),{Pool}=require('pg');
 const db=process.env.DATABASE_URL||'',secret=process.env.SESSION_SECRET||'',port=Number(process.env.PORT||3000);
 // O proprietario pode configurar ADMIN_PASSWORD diretamente como segredo no Render.
@@ -43,7 +44,49 @@ const server=http.createServer(async(req,res)=>{res.setHeader('X-Frame-Options',
  if(route==='/api/activity'&&req.method==='GET'){if(!await requireAuth(req,res))return;const r=await pool.query('SELECT id,action,created_at FROM catalog_revisions ORDER BY id DESC LIMIT 20');return json(res,200,{events:r.rows});}
  if(route==='/api/products'&&req.method==='GET'){if(!await requireAuth(req,res))return;const r=await pool.query('SELECT id,name,description,price_cents,checkout_url,image_url,published FROM products ORDER BY id');return json(res,200,{products:r.rows});}
  if(route==='/api/products'&&req.method==='PUT'){if(!await requireAuth(req,res,true))return;const b=await parse(req);if(!Array.isArray(b.products)||b.products.length>100||!b.products.every(valid)||new Set(b.products.map(x=>x.id)).size!==b.products.length)return json(res,400,{error:'invalid_catalog'});const cx=await pool.connect();try{await cx.query('BEGIN');await cx.query('DELETE FROM products WHERE NOT(id=ANY($1::text[]))',[b.products.map(p=>p.id)]);for(const p of b.products)await cx.query('INSERT INTO products(id,name,description,price_cents,checkout_url,image_url,published) VALUES($1,$2,$3,$4,$5,$6,$7) ON CONFLICT (id) DO UPDATE SET name=excluded.name,description=excluded.description,price_cents=excluded.price_cents,checkout_url=excluded.checkout_url,image_url=excluded.image_url,published=excluded.published,updated_at=now()',[p.id,p.name,p.description,p.price_cents,p.checkout_url,p.image_url,p.published]);await cx.query('INSERT INTO catalog_revisions(catalog,action) VALUES($1,$2)',[JSON.stringify(b.products),'draft_save']);await cx.query('INSERT INTO admin_audit(event,detail) VALUES($1,$2)',['draft_save',JSON.stringify({count:b.products.length})]);await cx.query('COMMIT');return json(res,200,{saved:b.products.length,published_to_site:false});}catch(e){await cx.query('ROLLBACK');throw e;}finally{cx.release();}}
- if(route==='/api/publish'&&req.method==='POST'){if(!await requireAuth(req,res,true))return;return json(res,409,{error:'publication_disabled_pending_review'});}
+ // Preview compares the exact database draft with the current GitHub storefront.
+ if(route==='/api/publish/preview'&&req.method==='GET'){
+   if(!await requireAuth(req,res))return;
+   const records=await pool.query('SELECT id,name,description,price_cents,checkout_url,image_url,published FROM products ORDER BY id');
+   const items=records.rows, token=process.env.GITHUB_PUBLISH_TOKEN||'';
+   try{
+     const live=await publisher.getStore(token);
+     const plan=publisher.renderSite(live.html,items);
+     return json(res,200,{current_sha:live.sha,catalog_digest:publisher.digest(items),changes:plan.changes,changed:plan.changed,publisher_enabled:!!token,store_url:'https://nexa-digital-academy.onrender.com',restrictions:'Somente os dois ebooks existentes, sem upload de capas ou remocao.'});
+   }catch(e){
+     const userErrors=['only_two_original_products_supported','hidden_products_not_supported','image_upload_not_supported','invalid_catalog','invalid_checkout','site_template_changed'];
+     if(userErrors.includes(e.message))return json(res,409,{error:e.message});
+     throw e;
+   }
+ }
+ if(route==='/api/publish'&&req.method==='POST'){
+   if(!await requireAuth(req,res,true))return;
+   const token=process.env.GITHUB_PUBLISH_TOKEN||'';
+   if(!token)return json(res,409,{error:'publisher_not_configured'});
+   const request=await parse(req,2048);
+   if(request.confirm_checkout_prices!==true||typeof request.current_sha!=='string'||typeof request.catalog_digest!=='string')return json(res,400,{error:'publish_confirmation_required'});
+   const records=await pool.query('SELECT id,name,description,price_cents,checkout_url,image_url,published FROM products ORDER BY id');
+   const items=records.rows;
+   if(publisher.digest(items)!==request.catalog_digest)return json(res,409,{error:'catalog_changed_since_preview'});
+   try{
+     const live=await publisher.getStore(token);
+     if(live.sha!==request.current_sha)return json(res,409,{error:'site_changed_since_preview'});
+     const plan=publisher.renderSite(live.html,items);
+     if(!plan.changed)return json(res,200,{ok:true,changed:false,detail:'Site já corresponde ao catálogo.'});
+     const published=await publisher.updateStore(token,live.sha,plan.html);
+     try{
+       await pool.query('INSERT INTO catalog_revisions(catalog,action) VALUES($1,$2)',[JSON.stringify(items),'site_publish']);
+       await pool.query('INSERT INTO admin_audit(event,detail) VALUES($1,$2)',['site_publish',JSON.stringify({commit:published.commit,previous_blob:live.sha,products:items.length})]);
+     }catch(auditError){console.error('Publish succeeded but audit failed',auditError.code||auditError.message);return json(res,200,{ok:true,changed:true,commit:published.commit,audit_warning:true});}
+     return json(res,200,{ok:true,changed:true,commit:published.commit,render_deploy_pending:true});
+   }catch(e){
+     const errors=['only_two_original_products_supported','hidden_products_not_supported','image_upload_not_supported','invalid_catalog','invalid_checkout','site_template_changed'];
+     if(errors.includes(e.message))return json(res,409,{error:e.message});
+     if(e.status===409||e.status===422)return json(res,409,{error:'github_conflict_or_branch_protection'});
+     if(e.status===401||e.status===403)return json(res,403,{error:'github_authorization_denied'});
+     throw e;
+   }
+ }
  return json(res,404,{error:'not_found'});
  }catch(e){if(e.message==='too_large')return json(res,413,{error:'payload_too_large'});if(e instanceof SyntaxError)return json(res,400,{error:'invalid_json'});console.error('Nexa admin request failed',e.code||e.message);return json(res,503,{error:'service_unavailable'});}
 });
