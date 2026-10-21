@@ -8,7 +8,7 @@ const known=[
   {id:'ia-na-pratica',anchor:'<article class="card card-ia" id="ia">',key:'ia'}
 ];
 const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
-const brl=n=>(n/100).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+const brl=n=>'R$ '+(n/100).toFixed(2).replace('.',',');
 function assertCatalog(products){
   if(!Array.isArray(products)||products.length!==2)throw Error('only_two_original_products_supported');
   const ids=products.map(p=>p.id).sort().join(',');
