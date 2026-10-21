@@ -45,10 +45,17 @@ function renderSite(html,products){
   if(!html.startsWith('<!doctype html>')||html.length<25000||!html.includes('id="ebooks"'))throw Error('site_template_changed');
   let next=html,changes=[];
   for(const spec of known){const p=products.find(p=>p.id===spec.id);const result=changeOne(next,spec,p);next=result.html;changes.push(result.changes);}
+  // Read the CURRENT price label from the hero so multiple successive publishes stay consistent.
+  const factsOpen=next.indexOf('<ul class="facts">');
+  const factsEnd=next.indexOf('</ul>',factsOpen);
+  if(factsOpen<0||factsEnd<0)throw Error('site_template_changed');
+  const hero=next.slice(factsOpen,factsEnd+5);
+  const label=/<\/svg>(?:R\$ [0-9.,]+ cada|Confira os preços abaixo)<\/li>/;
+  if(!label.test(hero))throw Error('site_template_changed');
   const prices=new Set(products.map(p=>p.price_cents));
-  // The hero currently mentions one common price. Replace it if catalog prices diverge.
-  if(prices.size!==1)next=next.replace(/R\$ 29,90 cada/,'Confira os preços abaixo');
-  else next=next.replace(/R\$ 29,90 cada/,brl(products[0].price_cents)+' cada');
+  const wanted=prices.size===1?brl(products[0].price_cents)+' cada':'Confira os preços abaixo';
+  const updatedHero=hero.replace(label,'</svg>'+esc(wanted)+'</li>');
+  next=next.slice(0,factsOpen)+updatedHero+next.slice(factsEnd+5);
   return {html:next,changes,changed:next!==html};
 }
 function digest(products){return crypto.createHash('sha256').update(JSON.stringify([...products].sort((a,b)=>a.id.localeCompare(b.id)))).digest('hex');}
