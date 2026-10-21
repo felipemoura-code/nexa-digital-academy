@@ -89,7 +89,7 @@
               <div id="kiwifyLinks" class="provider-links"><p class="empty-hint">Carregando...</p></div>
               <p class="field-help">Integração de pedidos e faturamento: <strong>não autorizada</strong>. Os links de checkout não dão acesso aos dados da conta.</p>
             </section>
-            <section class="surface provider-panel"><div class="section-title"><div><h2>Eduzz</h2><p>Cadastre os links do Checkout Sun para cada e-book.</p></div><span class="meta-pill">Integração de vendas pendente</span></div>
+            <section class="surface provider-panel"><div class="section-title"><div><h2>Eduzz</h2><p>Cadastre o checkout oficial da Eduzz para cada e-book.</p></div><span class="meta-pill">Integração de vendas pendente</span></div>
               <div id="eduzzLinks" class="provider-links"><p class="empty-hint">Carregando...</p></div>
               <p class="field-help">Salve os checkouts aqui sem alterar os links atuais da loja. A Eduzz não está conectada para consultar vendas e pedidos.</p>
               <a class="provider-guide" href="https://ajuda.eduzz.com/hc/pt-br/articles/1260807003909-Como-encontrar-meus-Links-de-Divulgação-MyEduzz" target="_blank" rel="noopener noreferrer">Onde encontrar meus links na Eduzz ↗</a>
@@ -308,9 +308,9 @@
       item.append(node('p','',matching?.checkout_url||p.checkout_url||'Sem checkout cadastrado'));
       item.append(node('span','provider-pill','Checkout no site · API de vendas não conectada'));
     }else{
-      const label=node('label','', 'Checkout Sun da Eduzz (HTTPS)');
+      const label=node('label','', 'Checkout Eduzz (HTTPS)');
       const field=document.createElement('input');field.type='url';field.autocomplete='off';field.spellcheck=false;
-      field.placeholder='https://sun.eduzz.com/...';
+      field.placeholder='https://chk.eduzz.com/...';
       field.value=matching?.checkout_url||'';field.maxLength=1800;
       label.append(field);item.append(label);
       const actions=node('div','provider-row-actions');
@@ -319,7 +319,7 @@
       save.addEventListener('click',async()=>{
         if(busy)return;
         const url=field.value.trim();
-        if(url&&!/^https:\/\/sun\.eduzz\.com\/[a-zA-Z0-9_-]{2,128}\/?(\?[^#]*)?$/.test(url)){notify('Use um checkout oficial da Eduzz: https://sun.eduzz.com/...',true);return;}
+        if(url&&!/^https:\/\/(?:sun|chk)\.eduzz\.com\/[a-zA-Z0-9_-]{2,128}\/?$/.test(url)){notify('Use um checkout oficial da Eduzz: https://chk.eduzz.com/...',true);return;}
         busy=true;save.disabled=true;
         try{
           await api('providers/eduzz-checkout',{method:'PUT',body:JSON.stringify({product_id:p.id,checkout_url:url})});
