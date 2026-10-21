@@ -69,7 +69,7 @@ const server=http.createServer(async(req,res)=>{res.setHeader('X-Frame-Options',
    if(url){
      let u;
      try{u=new URL(url);}catch{return json(res,400,{error:'invalid_eduzz_checkout'});}
-     if(u.protocol!=='https:'||u.hostname!=='sun.eduzz.com'||u.port||u.username||u.password||u.hash||!/^\/[a-zA-Z0-9_-]{2,128}\/?$/.test(u.pathname))return json(res,400,{error:'invalid_eduzz_checkout'});
+     if(u.protocol!=='https:'||!['sun.eduzz.com','chk.eduzz.com'].includes(u.hostname)||u.port||u.username||u.password||u.hash||!/^\/[a-zA-Z0-9_-]{2,128}\/?$/.test(u.pathname))return json(res,400,{error:'invalid_eduzz_checkout'});
    }
    const exists=await pool.query('SELECT 1 FROM products WHERE id=$1',[b.product_id]);
    if(exists.rowCount!==1)return json(res,404,{error:'product_not_found'});
