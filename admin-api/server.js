@@ -1,6 +1,19 @@
 'use strict';
 const http=require('node:http'),crypto=require('node:crypto'),{Pool}=require('pg');
-const db=process.env.DATABASE_URL||'',secret=process.env.SESSION_SECRET||'',hash=process.env.ADMIN_PASSWORD_SCRYPT||'',port=Number(process.env.PORT||3000);
+const db=process.env.DATABASE_URL||'',secret=process.env.SESSION_SECRET||'',port=Number(process.env.PORT||3000);
+// O proprietario pode configurar ADMIN_PASSWORD diretamente como segredo no Render.
+// A senha e derivada em memoria com scrypt no inicio do processo, sem usar texto puro para comparacao.
+// ADMIN_PASSWORD_SCRYPT permanece disponivel para instalacoes com hash previamente criado.
+const hash=(()=>{
+  const prehash=process.env.ADMIN_PASSWORD_SCRYPT||'';
+  if(/^scrypt:[a-f0-9]{32}:[a-f0-9]{128}$/.test(prehash))return prehash;
+  const password=process.env.ADMIN_PASSWORD||'';
+  if(password.length<16||password.length>128)return '';
+  const salt=crypto.randomBytes(16).toString('hex');
+  const derived=crypto.scryptSync(password,salt,64).toString('hex');
+  delete process.env.ADMIN_PASSWORD;
+  return 'scrypt:'+salt+':'+derived;
+})();
 const ready=!!db&&secret.length>=32&&/^scrypt:[a-f0-9]{32}:[a-f0-9]{128}$/.test(hash);
 const pool=db?new Pool({connectionString:db,ssl:{rejectUnauthorized:true},max:3,connectionTimeoutMillis:6000}):null;
 const sha=s=>crypto.createHash('sha256').update(s).digest('hex');
