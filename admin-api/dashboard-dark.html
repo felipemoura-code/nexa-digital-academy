@@ -16,6 +16,8 @@
 .publish-box{max-width:960px}.publish-items{display:grid;gap:12px;margin:24px 0}.publish-item{padding:16px 18px;border:1px solid var(--line);border-radius:11px;background:var(--surface2)}.publish-item strong{display:block;font-size:14px;margin-bottom:8px}.publish-item p{font-size:12px;color:var(--muted);margin:4px 0;overflow-wrap:anywhere}.publish-confirm{display:flex;gap:12px;align-items:flex-start;padding:18px 0;color:#d6ded8;font-size:12px}.publish-confirm input{width:18px;height:18px;flex:none;accent-color:#b9dfbd}.publish-box .editor-actions{display:flex;flex-wrap:wrap;gap:10px}.publish-box .outline-btn{display:inline-flex;align-items:center;text-decoration:none}.publish-box button:disabled{opacity:.43;cursor:not-allowed}
 
 .provider-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}.provider-panel{padding:28px}.provider-links{display:grid;gap:16px;margin-top:22px}.provider-link-row{padding:17px;border:1px solid var(--line);border-radius:10px;background:var(--surface2)}.provider-link-row strong{display:block;font-size:13px;margin-bottom:7px}.provider-link-row p{font-size:11px;color:var(--muted);overflow-wrap:anywhere}.provider-link-row input{display:block;width:100%;padding:11px 12px;background:var(--surface3);border:1px solid #46484a;color:var(--fg);border-radius:7px;font-size:12px;min-width:0;margin:9px 0}.provider-link-row .outline-btn,.provider-link-row .primary-btn{font-size:11px;margin-top:8px}.provider-guide{color:var(--accent);font-size:11px;display:inline-block;margin-top:17px;text-underline-offset:3px}.provider-link-row .provider-row-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.provider-pill{display:inline-block;font-size:10px;color:#bbd6c3;margin-top:5px}@media(max-width:1000px){.provider-grid{grid-template-columns:1fr}}@media(max-width:490px){.provider-panel{padding:20px 17px}}
+
+.activity-item{align-items:center;flex-wrap:wrap}.activity-item .outline-btn{margin-left:auto;font-size:11px;white-space:nowrap}.activity-item>div:nth-child(2){flex:1;min-width:160px}@media(max-width:490px){.activity-item .outline-btn{margin-left:0}}
 </style>
   
 </head>
@@ -226,12 +228,36 @@
     const blob=new Blob([JSON.stringify({name:'Nexa Digital Academy',exported_at:new Date().toISOString(),publication_status:'draft_only',products},null,2)],{type:'application/json'});
     const url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download='nexa-catalogo-'+new Date().toISOString().slice(0,10)+'.json';document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),2000);notify('Backup do catálogo exportado.');
   }
+  async function restoreDraft(revisionId){
+    if(busy||!discardChanges())return;
+    try{
+      const data=await api('revisions/'+revisionId);
+      const list=data.products;
+      const summary=list.map(p=>p.name+' — '+brl(p.price_cents)).join('\n');
+      if(!confirm('Restaurar esta versão como RASCUNHO?\n\n'+summary+
+        '\n\nIsto substituirá o catálogo de rascunhos atual no Neon e criará uma nova revisão. A loja pública e os checkouts na Kiwify NÃO serão alterados.'))return;
+      const response=await api('products',{method:'PUT',body:JSON.stringify({products:list})});
+      if(response.published_to_site!==false)throw Error('Resposta inesperada do servidor.');
+      products=list;selectedId=products[0]?.id||null;draftNew=null;dirty=false;
+      updateDashboard();renderProducts();await loadActivity();
+      notify('Versão '+revisionId+' restaurada como rascunho. Loja pública não alterada.');
+    }catch(error){notify('Não foi possível restaurar: '+error.message,true);}
+  }
   async function loadActivity(){
     const target=$('activityList');target.replaceChildren(node('p','empty-hint','Consultando histórico...'));
-    try{const data=await api('activity');target.replaceChildren();if(!data.events.length){target.append(node('p','empty-hint','Ainda não há rascunhos salvos pelo painel.'));return;}
-      for(const event of data.events){const row=node('div','activity-item'),icon=node('span','activity-mark','✓'),detail=node('div');
+    try{
+      const data=await api('activity');target.replaceChildren();
+      if(!data.events.length){target.append(node('p','empty-hint','Ainda não há versões salvas pelo painel.'));return;}
+      for(const event of data.events){
+        const row=node('div','activity-item'),icon=node('span','activity-mark','✓'),detail=node('div');
         const date=new Date(event.created_at).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'});
-        detail.append(node('strong','',event.action==='draft_save'?'Catálogo salvo como rascunho':event.action),node('p','',date+' · Registro #'+event.id));row.append(icon,detail);target.append(row);}
+        const label=event.action==='draft_save'?'Catálogo salvo como rascunho':event.action==='site_publish'?'Publicação no site':'Revisão do catálogo';
+        detail.append(node('strong','',label),node('p','',date+' · Versão #'+event.id));
+        const restore=node('button','outline-btn','Restaurar rascunho');
+        restore.type='button';restore.title='Restaurar apenas o rascunho salvo nesta versão';
+        restore.addEventListener('click',()=>restoreDraft(event.id));
+        row.append(icon,detail,restore);target.append(row);
+      }
     }catch(e){target.replaceChildren(node('p','empty-hint','Não foi possível carregar o histórico.'));}
   }
   async function logout(){try{await api('logout',{method:'POST'});location.assign('/login');}catch(e){notify(e.message,true);}}
