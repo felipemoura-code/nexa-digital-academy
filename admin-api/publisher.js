@@ -80,4 +80,4 @@ async function updateStore(token,currentSha,html){
  const result=await githubRequest(url,token,{method:'PUT',body:JSON.stringify({message:'Publicar catalogo Nexa Admin (revisao autorizada)',branch:BRANCH,sha:currentSha,content:Buffer.from(html,'utf8').toString('base64')})});
  return {commit:result.commit?.sha||null,blob:result.content?.sha||null};
 }
-module.exports={renderSite,digest,getStore,updateStore};
+module.exports={renderSite,digest,assertCatalog,getStore,updateStore};
