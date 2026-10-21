@@ -41,6 +41,18 @@ const server=http.createServer(async(req,res)=>{res.setHeader('X-Frame-Options',
  if(route==='/api/login'&&req.method==='POST'){const ip=crypto.createHmac('sha256',secret).update(req.socket.remoteAddress||'').digest('hex');const count=await pool.query("SELECT count(*)::int n FROM admin_login_attempts WHERE ip_hash=$1 AND attempted_at>now()-interval '15 minutes'",[ip]);if(count.rows[0].n>=7)return json(res,429,{error:'rate_limited'});const b=await parse(req,4096);if(!pass(b.password)){await pool.query('INSERT INTO admin_login_attempts(ip_hash) VALUES($1)',[ip]);return json(res,401,{error:'invalid_credentials'});}await pool.query('DELETE FROM admin_login_attempts WHERE ip_hash=$1',[ip]);const token=crypto.randomBytes(32).toString('hex'),csrf=crypto.randomBytes(24).toString('hex');await pool.query("INSERT INTO admin_sessions(token_hash,csrf_token,expires_at) VALUES($1,$2,now()+interval '8 hours')",[sha(token),csrf]);const mac=crypto.createHmac('sha256',secret).update(token).digest('hex');return json(res,200,{ok:true},{'Set-Cookie':'nexa_session='+token+'.'+mac+'; Secure; HttpOnly; SameSite=Strict; Path=/; Max-Age=28800'});}
  if(route==='/api/session'&&req.method==='GET'){const s=await requireAuth(req,res);if(!s)return;return json(res,200,{csrf:s.csrf_token});}
  if(route==='/api/logout'&&req.method==='POST'){const s=await requireAuth(req,res,true);if(!s)return;await pool.query('DELETE FROM admin_sessions WHERE token_hash=$1',[s.token_hash]);return json(res,200,{ok:true},{'Set-Cookie':'nexa_session=; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=0'});}
+ // Consultar snapshot histórico para restaurar somente o rascunho, mediante confirmação no painel.
+ if(route.startsWith('/api/revisions/')&&req.method==='GET'){
+   if(!await requireAuth(req,res))return;
+   const match=route.match(/^\/api\/revisions\/([1-9][0-9]{0,15})$/);
+   if(!match)return json(res,404,{error:'not_found'});
+   const r=await pool.query('SELECT id,action,catalog,created_at FROM catalog_revisions WHERE id=$1',[match[1]]);
+   if(!r.rows.length)return json(res,404,{error:'revision_not_found'});
+   const snapshot=r.rows[0];
+   if(!Array.isArray(snapshot.catalog)||snapshot.catalog.length>100||!snapshot.catalog.every(valid)||
+      new Set(snapshot.catalog.map(x=>x.id)).size!==snapshot.catalog.length)return json(res,409,{error:'revision_invalid'});
+   return json(res,200,{revision:{id:snapshot.id,action:snapshot.action,created_at:snapshot.created_at},products:snapshot.catalog,site_changed:false});
+ }
  if(route==='/api/activity'&&req.method==='GET'){if(!await requireAuth(req,res))return;const r=await pool.query('SELECT id,action,created_at FROM catalog_revisions ORDER BY id DESC LIMIT 20');return json(res,200,{events:r.rows});}
  // Provider checkout links, not account/API connectivity. No secrets are handled here.
  if(route==='/api/providers'&&req.method==='GET'){
