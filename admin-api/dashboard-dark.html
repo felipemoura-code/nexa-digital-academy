@@ -14,6 +14,8 @@
 @media(max-width:490px){h1{font-size:25px}.page-intro{flex-direction:column;align-items:stretch}.page-intro>.primary-btn,.intro-actions>.primary-btn{width:100%}.intro-actions{width:100%}.intro-actions>*{flex:1}.stats-grid{grid-template-columns:1fr 1fr;gap:11px}.stat-card{padding:18px 14px;min-height:145px}.stat-head{font-size:11px}.stat-value{font-size:28px}.stat-foot{font-size:10px}.panel-chart,.panel-system,.data-surface,.catalog-panel,.edit-panel,.activity-box,.settings-box{padding:20px 17px}.two-fields{grid-template-columns:1fr}.topbar .small-link{display:none}.footer span:last-child{display:none}.editor-actions{flex-wrap:wrap}}
 
 .publish-box{max-width:960px}.publish-items{display:grid;gap:12px;margin:24px 0}.publish-item{padding:16px 18px;border:1px solid var(--line);border-radius:11px;background:var(--surface2)}.publish-item strong{display:block;font-size:14px;margin-bottom:8px}.publish-item p{font-size:12px;color:var(--muted);margin:4px 0;overflow-wrap:anywhere}.publish-confirm{display:flex;gap:12px;align-items:flex-start;padding:18px 0;color:#d6ded8;font-size:12px}.publish-confirm input{width:18px;height:18px;flex:none;accent-color:#b9dfbd}.publish-box .editor-actions{display:flex;flex-wrap:wrap;gap:10px}.publish-box .outline-btn{display:inline-flex;align-items:center;text-decoration:none}.publish-box button:disabled{opacity:.43;cursor:not-allowed}
+
+.provider-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}.provider-panel{padding:28px}.provider-links{display:grid;gap:16px;margin-top:22px}.provider-link-row{padding:17px;border:1px solid var(--line);border-radius:10px;background:var(--surface2)}.provider-link-row strong{display:block;font-size:13px;margin-bottom:7px}.provider-link-row p{font-size:11px;color:var(--muted);overflow-wrap:anywhere}.provider-link-row input{display:block;width:100%;padding:11px 12px;background:var(--surface3);border:1px solid #46484a;color:var(--fg);border-radius:7px;font-size:12px;min-width:0;margin:9px 0}.provider-link-row .outline-btn,.provider-link-row .primary-btn{font-size:11px;margin-top:8px}.provider-guide{color:var(--accent);font-size:11px;display:inline-block;margin-top:17px;text-underline-offset:3px}.provider-link-row .provider-row-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.provider-pill{display:inline-block;font-size:10px;color:#bbd6c3;margin-top:5px}@media(max-width:1000px){.provider-grid{grid-template-columns:1fr}}@media(max-width:490px){.provider-panel{padding:20px 17px}}
 </style>
   
 </head>
@@ -30,6 +32,7 @@
         <button type="button" class="navitem active" data-page="dashboard" aria-current="page"><span class="navglyph">▦</span> Visão geral</button>
         <button type="button" class="navitem" data-page="products"><span class="navglyph">▤</span> Produtos <span class="nav-count" id="sideCount">—</span></button>
         <button type="button" class="navitem" data-page="activity"><span class="navglyph">◷</span> Atividades</button>
+        <button type="button" class="navitem" data-page="platforms"><span class="navglyph">↗</span> Plataformas</button>
         <button type="button" class="navitem" data-page="publish"><span class="navglyph">↑</span> Publicar</button>
         <button type="button" class="navitem" data-page="settings"><span class="navglyph">⚙</span> Configurações</button>
       </nav>
@@ -55,7 +58,7 @@
           </div>
           <div class="two-grid">
             <section class="surface panel-chart"><div class="section-title"><div><h2>Preços do catálogo</h2><p>Comparação entre os produtos cadastrados</p></div><span class="meta-pill">Dados reais</span></div><div class="pricebars" id="priceBars"><p class="empty-hint">Carregando produtos...</p></div></section>
-            <section class="surface panel-system"><div class="section-title"><div><h2>Estado da loja</h2><p>Conexões e funcionalidades</p></div><span class="status-light"></span></div><div class="status-list"><div><span class="status-name"><span class="dot green"></span> Catálogo</span><strong>Banco Neon</strong></div><div><span class="status-name"><span class="dot orange"></span> Publicação automática</span><strong class="orange-text">Aguardando ativação</strong></div><div><span class="status-name"><span class="dot green"></span> Kiwify</span><strong>2 checkouts cadastrados</strong></div><div><span class="status-name"><span class="dot orange"></span> Eduzz</span><strong class="orange-text">Não vinculada ao catálogo</strong></div></div><div class="system-note"><strong>Sobre as plataformas</strong><p>Os dois produtos usam links da Kiwify. A Eduzz está identificada no painel, mas ainda não tem checkout nem dados de vendas integrados. Receita e conversão permanecem indisponíveis.</p></div></section>
+            <section class="surface panel-system"><div class="section-title"><div><h2>Estado da loja</h2><p>Conexões e funcionalidades</p></div><span class="status-light"></span></div><div class="status-list"><div><span class="status-name"><span class="dot green"></span> Catálogo</span><strong>Banco Neon</strong></div><div><span class="status-name"><span class="dot orange"></span> Publicação automática</span><strong class="orange-text">Aguardando ativação</strong></div><div><span class="status-name"><span class="dot green"></span> Kiwify</span><strong id="kiwifyStatus">2 checkouts cadastrados</strong></div><div><span class="status-name"><span class="dot orange"></span> Eduzz</span><strong class="orange-text" id="eduzzStatus">Sem checkout cadastrado</strong></div></div><div class="system-note"><strong>Sobre as plataformas</strong><p>Os dois produtos usam links da Kiwify. A Eduzz está identificada no painel, mas ainda não tem checkout nem dados de vendas integrados. Receita e conversão permanecem indisponíveis.</p></div></section>
           </div>
           <section class="surface data-surface"><div class="section-title"><div><h2>Seus produtos</h2><p>Cadastro e links de pagamento</p></div><button type="button" id="openProducts" class="text-action">Gerenciar produtos ↗</button></div><div class="tablewrap"><table><thead><tr><th>Produto</th><th>Preço</th><th>Status do rascunho</th><th>Ação</th></tr></thead><tbody id="dashboardProducts"></tbody></table></div></section>
         </section>
@@ -77,6 +80,21 @@
           </div>
         </section>
         <section data-screen="activity" class="screen" hidden><div class="page-intro"><div><div class="eyebrow">AUDITORIA</div><h1>Atividades</h1><p>Últimos registros de alterações salvas no banco.</p></div><button type="button" id="refreshActivity" class="outline-btn">↻ Atualizar</button></div><section class="surface activity-box"><div class="section-title"><div><h2>Histórico de rascunhos</h2><p>Registros reais, sem eventos fictícios</p></div></div><div id="activityList" class="activity-list"><p class="empty-hint">Carregando histórico...</p></div></section></section>
+        <section class="screen" data-screen="platforms" hidden>
+          <div class="page-intro"><div><div class="eyebrow">CHECKOUTS E INTEGRAÇÕES</div><h1>Plataformas de vendas</h1><p>Gerencie os links oficiais dos produtos. A conexão de pedidos e vendas será uma etapa separada.</p></div><button type="button" class="outline-btn" id="reloadProviders">↻ Atualizar</button></div>
+          <div class="provider-grid">
+            <section class="surface provider-panel"><div class="section-title"><div><h2>Kiwify</h2><p>Links que já funcionam na loja pública.</p></div><span class="meta-pill">Checkout configurado</span></div>
+              <div id="kiwifyLinks" class="provider-links"><p class="empty-hint">Carregando...</p></div>
+              <p class="field-help">Integração de pedidos e faturamento: <strong>não autorizada</strong>. Os links de checkout não dão acesso aos dados da conta.</p>
+            </section>
+            <section class="surface provider-panel"><div class="section-title"><div><h2>Eduzz</h2><p>Cadastre os links do Checkout Sun para cada e-book.</p></div><span class="meta-pill">Integração de vendas pendente</span></div>
+              <div id="eduzzLinks" class="provider-links"><p class="empty-hint">Carregando...</p></div>
+              <p class="field-help">Salve os checkouts aqui sem alterar os links atuais da loja. A Eduzz não está conectada para consultar vendas e pedidos.</p>
+              <a class="provider-guide" href="https://ajuda.eduzz.com/hc/pt-br/articles/1260807003909-Como-encontrar-meus-Links-de-Divulgação-MyEduzz" target="_blank" rel="noopener noreferrer">Onde encontrar meus links na Eduzz ↗</a>
+            </section>
+          </div>
+          <p id="providerMessage" class="field-help" role="status"></p>
+        </section>
         <section data-screen="publish" class="screen" hidden>
           <div class="page-intro"><div><div class="eyebrow">PUBLICAÇÃO CONTROLADA</div><h1>Publicar na loja</h1><p>Confira os dados antes de atualizar o site público.</p></div><button class="outline-btn" id="refreshPublish" type="button">↻ Revisar novamente</button></div>
           <section class="surface settings-box publish-box">
@@ -89,7 +107,7 @@
             <p class="field-help" id="publishHelp">Para publicar diretamente, é preciso configurar a credencial de publicação no servidor.</p>
           </section>
         </section>
-        <section data-screen="settings" class="screen" hidden><div class="page-intro"><div><div class="eyebrow">SISTEMA</div><h1>Configurações</h1><p>Conexões e informações da administração.</p></div></div><section class="surface settings-box"><h2>Informações do ambiente</h2><dl><div><dt>Área administrativa</dt><dd>Protegida por senha e sessão</dd></div><div><dt>Armazenamento de rascunhos</dt><dd>Banco Neon</dd></div><div><dt>Loja pública</dt><dd>Nexa Digital Academy no Render</dd></div><div><dt>Checkouts usados no site</dt><dd>Kiwify — 2 produtos</dd></div><div><dt>Eduzz</dt><dd class="orange-text">Não vinculada — integração pendente</dd></div><div><dt>Publicação automática</dt><dd class="orange-text">Não disponível nesta versão</dd></div></dl><div class="settings-actions"><button type="button" id="backupSettings" class="outline-btn">↓ Exportar catálogo</button><button type="button" id="logoutSettings" class="danger-btn">Encerrar sessão</button></div></section></section>
+        <section data-screen="settings" class="screen" hidden><div class="page-intro"><div><div class="eyebrow">SISTEMA</div><h1>Configurações</h1><p>Conexões e informações da administração.</p></div></div><section class="surface settings-box"><h2>Informações do ambiente</h2><dl><div><dt>Área administrativa</dt><dd>Protegida por senha e sessão</dd></div><div><dt>Armazenamento de rascunhos</dt><dd>Banco Neon</dd></div><div><dt>Loja pública</dt><dd>Nexa Digital Academy no Render</dd></div><div><dt>Checkouts usados no site</dt><dd>Kiwify — 2 produtos</dd></div><div><dt>Eduzz</dt><dd class="orange-text" id="eduzzSettingsStatus">Checkout não cadastrado · API não conectada</dd></div><div><dt>Publicação automática</dt><dd class="orange-text">Não disponível nesta versão</dd></div></dl><div class="settings-actions"><button type="button" id="backupSettings" class="outline-btn">↓ Exportar catálogo</button><button type="button" id="logoutSettings" class="danger-btn">Encerrar sessão</button></div></section></section>
       </main>
       <footer class="footer"><span>© 2026 Nexa Digital Academy</span><span>Painel de gestão · Dados do catálogo</span></footer>
     </div>
@@ -125,10 +143,11 @@
     dirty=false;
     document.querySelectorAll('[data-screen]').forEach(x=>x.hidden=x.dataset.screen!==name);
     document.querySelectorAll('[data-page]').forEach(x=>{let active=x.dataset.page===name;x.classList.toggle('active',active);if(active)x.setAttribute('aria-current','page');else x.removeAttribute('aria-current');});
-    $('breadcrumb').textContent=({dashboard:'Visão geral',products:'Produtos',activity:'Atividades',settings:'Configurações',publish:'Publicar'})[name]||name;
+    $('breadcrumb').textContent=({dashboard:'Visão geral',products:'Produtos',activity:'Atividades',settings:'Configurações',publish:'Publicar',platforms:'Plataformas'})[name]||name;
     closeMobile();window.scrollTo({top:0,behavior:'smooth'});
     if(name==='activity')loadActivity();
     if(name==='publish')loadPublishPreview();
+    if(name==='platforms')loadProviders();
     if(name==='products')renderProducts();
   }
   function updateDashboard(){
@@ -254,6 +273,55 @@
       await loadPublishPreview();
     }catch(error){notify(error.message,true);await loadPublishPreview();}
   }
+  let currentProviders=null;
+  function rowForProvider(p,which,links){
+    const item=node('div','provider-link-row');
+    item.append(node('strong','',p.name));
+    const matching=links.find(x=>x.product_id===p.id&&x.provider===which);
+    if(which==='kiwify'){
+      item.append(node('p','',matching?.checkout_url||p.checkout_url||'Sem checkout cadastrado'));
+      item.append(node('span','provider-pill','Checkout no site · API de vendas não conectada'));
+    }else{
+      const label=node('label','', 'Checkout Sun da Eduzz (HTTPS)');
+      const field=document.createElement('input');field.type='url';field.autocomplete='off';field.spellcheck=false;
+      field.placeholder='https://sun.eduzz.com/...';
+      field.value=matching?.checkout_url||'';field.maxLength=1800;
+      label.append(field);item.append(label);
+      const actions=node('div','provider-row-actions');
+      const save=node('button','primary-btn','Salvar checkout');save.type='button';
+      const check=node('span','provider-pill',matching?'Link salvo · não publicado':'Nenhum link cadastrado');
+      save.addEventListener('click',async()=>{
+        if(busy)return;
+        const url=field.value.trim();
+        if(url&&!/^https:\/\/sun\.eduzz\.com\/[a-zA-Z0-9_-]{2,128}\/?(\?[^#]*)?$/.test(url)){notify('Use um checkout oficial da Eduzz: https://sun.eduzz.com/...',true);return;}
+        busy=true;save.disabled=true;
+        try{
+          await api('providers/eduzz-checkout',{method:'PUT',body:JSON.stringify({product_id:p.id,checkout_url:url})});
+          notify(url?'Checkout Eduzz salvo no banco. Loja pública não alterada.':'Checkout Eduzz removido do cadastro.');
+          await loadProviders();
+        }catch(e){notify(e.message,true);}finally{busy=false;save.disabled=false;}
+      });
+      actions.append(save,check);item.append(actions);
+    }
+    return item;
+  }
+  async function loadProviders(){
+    $('providerMessage').textContent='Consultando checkouts cadastrados no Neon...';
+    try{
+      const result=await api('providers');currentProviders=result;
+      for(const provider of ['kiwify','eduzz']){
+        const target=$(provider+'Links');target.replaceChildren();
+        for(const p of products)target.append(rowForProvider(p,provider,result.checkouts));
+        if(!products.length)target.append(node('p','empty-hint','Nenhum produto cadastrado.'));
+      }
+      const kc=result.checkouts.filter(x=>x.provider==='kiwify').length;
+      const ec=result.checkouts.filter(x=>x.provider==='eduzz').length;
+      $('kiwifyStatus').textContent=kc+' checkouts cadastrados';
+      $('eduzzStatus').textContent=ec?ec+' checkouts cadastrados · API não conectada':'Sem checkout cadastrado';
+      $('eduzzSettingsStatus').textContent=ec?ec+' links cadastrados · API não conectada':'Checkout não cadastrado · API não conectada';
+      $('providerMessage').textContent='Os links estão armazenados com acesso protegido. Nenhuma conta de vendas foi conectada por API.';
+    }catch(e){$('providerMessage').textContent='Não foi possível consultar os checkouts: '+e.message;}
+  }
   function bindings(){
     document.querySelectorAll('[data-page]').forEach(btn=>btn.addEventListener('click',()=>screen(btn.dataset.page)));
     $('openSidebar').addEventListener('click',()=>{$('sidebar').classList.add('open');$('scrim').hidden=false;});
@@ -264,6 +332,7 @@
     ['backupTop','backupSettings'].forEach(id=>$(id).addEventListener('click',backup));
     $('refreshActivity').addEventListener('click',loadActivity);
     $('refreshPublish').addEventListener('click',loadPublishPreview);
+    $('reloadProviders').addEventListener('click',loadProviders);
     $('confirmPrices').addEventListener('change',togglePublish);
     $('publishNow').addEventListener('click',publishToStore);
     $('productSearch').addEventListener('input',renderProducts);$('productFilter').addEventListener('change',renderProducts);
@@ -288,7 +357,7 @@
       csrf=(await api('session')).csrf;
       products=(await api('products')).products;
       selectedId=products[0]?.id||null;
-      updateDashboard();renderProducts();
+      updateDashboard();renderProducts();loadProviders();
     }catch(error){notify(error.message,true);}
   }
   init();
