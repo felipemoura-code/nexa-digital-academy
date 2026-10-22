@@ -1,6 +1,7 @@
 'use strict';
 const fs=require('node:fs');
 const publisher=require('./publisher');
+const {checkoutProvider}=require('./checkout');
 const http=require('node:http'),crypto=require('node:crypto'),{Pool}=require('pg');
 const db=process.env.DATABASE_URL||'',secret=process.env.SESSION_SECRET||'',port=Number(process.env.PORT||3000);
 // O proprietario pode configurar ADMIN_PASSWORD diretamente como segredo no Render.
@@ -24,7 +25,7 @@ function pass(password){if(typeof password!=='string'||password.length>512)retur
 async function parse(req,limit=250000){let size=0,arr=[];for await(const c of req){size+=c.length;if(size>limit)throw Error('too_large');arr.push(c);}return JSON.parse(Buffer.concat(arr).toString('utf8'));}
 async function session(req){const c=(req.headers.cookie||'').match(/(?:^|;\s*)nexa_session=([a-f0-9]{64})\.([a-f0-9]{64})(?:;|$)/);if(!c||!ready)return null;const mac=crypto.createHmac('sha256',secret).update(c[1]).digest('hex');if(!crypto.timingSafeEqual(Buffer.from(c[2],'hex'),Buffer.from(mac,'hex')))return null;const r=await pool.query('SELECT token_hash,csrf_token FROM admin_sessions WHERE token_hash=$1 AND expires_at>now()',[sha(c[1])]);return r.rows[0]||null;}
 async function requireAuth(req,res,mutation=false){const s=await session(req);if(!s){json(res,401,{error:'unauthorized'});return null;}if(mutation&&req.headers['x-csrf-token']!==s.csrf_token){json(res,403,{error:'csrf'});return null;}return s;}
-function valid(p){if(!p||typeof p.id!=='string'||!/^[a-z0-9_-]{1,64}$/.test(p.id)||typeof p.name!=='string'||!p.name.trim()||p.name.length>160||typeof p.description!=='string'||p.description.length>4000||!Number.isInteger(p.price_cents)||p.price_cents<0||p.price_cents>100000000||typeof p.published!=='boolean'||typeof p.checkout_url!=='string'||typeof p.image_url!=='string')return false;try{const u=new URL(p.checkout_url);if(u.protocol!=='https:'||u.hostname!=='pay.kiwify.com.br'||u.username||u.password||u.search||u.hash||!/^\/[a-zA-Z0-9_-]{5,80}\/?$/.test(u.pathname))return false;if(p.image_url){const x=new URL(p.image_url);if(x.protocol!=='https:'||x.username||x.password||x.hash||p.image_url.length>1500)return false;}}catch{return false;}return true;}
+function valid(p){if(!p||typeof p.id!=='string'||!/^[a-z0-9_-]{1,64}$/.test(p.id)||typeof p.name!=='string'||!p.name.trim()||p.name.length>160||typeof p.description!=='string'||p.description.length>4000||!Number.isInteger(p.price_cents)||p.price_cents<0||p.price_cents>100000000||typeof p.published!=='boolean'||typeof p.checkout_url!=='string'||typeof p.image_url!=='string')return false;try{if(!checkoutProvider(p.checkout_url))return false;if(p.image_url){const x=new URL(p.image_url);if(x.protocol!=='https:'||x.username||x.password||x.hash||p.image_url.length>1500)return false;}}catch{return false;}return true;}
 const css="*{box-sizing:border-box}html{color-scheme:dark}body{margin:0;min-height:100vh;background:#0c0d0e;color:#f4f5f5;font:14px/1.6 Inter,system-ui,-apple-system,\"Segoe UI\",sans-serif}header{height:76px;display:flex;align-items:center;justify-content:space-between;padding:0 6%;border-bottom:1px solid #292b2d;background:#101112}header strong{font-size:13px;letter-spacing:.055em}header small{font-size:12px;color:#9da4a5}main{min-height:calc(100vh - 76px);padding:8vh 20px}.panel{max-width:445px;margin:auto;background:#181a1b;border:1px solid #303336;border-radius:16px;padding:40px;box-shadow:0 24px 90px #0006}.panel h1{font-weight:680;font-size:29px;letter-spacing:-.04em;margin:0 0 8px}.panel p{color:#999fa1;font-size:13px;margin:8px 0 23px}form label{display:block;color:#d6dadb;font-weight:600;margin:18px 0 9px}input{width:100%;padding:14px;background:#212324;color:#f4f5f5;border:1px solid #414548;border-radius:9px;font:inherit}input:focus-visible{outline:2px solid #acc9b4;outline-offset:2px}button{border:0;border-radius:9px;background:#e4f2e7;color:#1f2922;font-weight:720;padding:13px 28px;cursor:pointer}button:hover{background:white}button:disabled{opacity:.6;cursor:wait}#status{color:#cfd9d1;min-height:20px}@media(max-width:520px){main{padding:40px 18px}.panel{padding:30px 24px}header{padding:0 22px}header strong{font-size:11px}}";
 const commonHead=(nonce,title)=>'<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'+title+'</title><style nonce="'+nonce+'">'+css+'</style></head>';
 const loginScript="document.querySelector('form').onsubmit=async e=>{e.preventDefault();let b=document.querySelector('button');b.disabled=true;try{let r=await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:document.querySelector('input').value})});document.getElementById('status').textContent=r.ok?'Acesso autorizado':'Acesso indisponível ou senha incorreta';if(r.ok)location.href='/admin';}catch{document.getElementById('status').textContent='Sem conexão';}finally{b.disabled=false;}}";
@@ -66,11 +67,7 @@ const server=http.createServer(async(req,res)=>{res.setHeader('X-Frame-Options',
    const b=await parse(req,4096);
    if(!b||typeof b.product_id!=='string'||!/^[a-z0-9_-]{1,64}$/.test(b.product_id)||typeof b.checkout_url!=='string'||b.checkout_url.length>1800)return json(res,400,{error:'invalid_eduzz_checkout'});
    const url=b.checkout_url.trim();
-   if(url){
-     let u;
-     try{u=new URL(url);}catch{return json(res,400,{error:'invalid_eduzz_checkout'});}
-     if(u.protocol!=='https:'||!['sun.eduzz.com','chk.eduzz.com'].includes(u.hostname)||u.port||u.username||u.password||u.hash||!/^\/[a-zA-Z0-9_-]{2,128}\/?$/.test(u.pathname))return json(res,400,{error:'invalid_eduzz_checkout'});
-   }
+   if(url&&checkoutProvider(url)!=='eduzz')return json(res,400,{error:'invalid_eduzz_checkout'});
    const exists=await pool.query('SELECT 1 FROM products WHERE id=$1',[b.product_id]);
    if(exists.rowCount!==1)return json(res,404,{error:'product_not_found'});
    const client=await pool.connect();
@@ -85,7 +82,10 @@ const server=http.createServer(async(req,res)=>{res.setHeader('X-Frame-Options',
    }catch(e){await client.query('ROLLBACK');throw e;}finally{client.release();}
  }
  if(route==='/api/products'&&req.method==='GET'){if(!await requireAuth(req,res))return;const r=await pool.query('SELECT id,name,description,price_cents,checkout_url,image_url,published FROM products ORDER BY id');return json(res,200,{products:r.rows});}
- if(route==='/api/products'&&req.method==='PUT'){if(!await requireAuth(req,res,true))return;const b=await parse(req);if(!Array.isArray(b.products)||b.products.length>100||!b.products.every(valid)||new Set(b.products.map(x=>x.id)).size!==b.products.length)return json(res,400,{error:'invalid_catalog'});const cx=await pool.connect();try{await cx.query('BEGIN');await cx.query('DELETE FROM products WHERE NOT(id=ANY($1::text[]))',[b.products.map(p=>p.id)]);for(const p of b.products)await cx.query('INSERT INTO products(id,name,description,price_cents,checkout_url,image_url,published) VALUES($1,$2,$3,$4,$5,$6,$7) ON CONFLICT (id) DO UPDATE SET name=excluded.name,description=excluded.description,price_cents=excluded.price_cents,checkout_url=excluded.checkout_url,image_url=excluded.image_url,published=excluded.published,updated_at=now()',[p.id,p.name,p.description,p.price_cents,p.checkout_url,p.image_url,p.published]);await cx.query('INSERT INTO catalog_revisions(catalog,action) VALUES($1,$2)',[JSON.stringify(b.products),'draft_save']);await cx.query('INSERT INTO admin_audit(event,detail) VALUES($1,$2)',['draft_save',JSON.stringify({count:b.products.length})]);await cx.query('COMMIT');return json(res,200,{saved:b.products.length,published_to_site:false});}catch(e){await cx.query('ROLLBACK');throw e;}finally{cx.release();}}
+ if(route==='/api/products'&&req.method==='PUT'){if(!await requireAuth(req,res,true))return;const b=await parse(req);if(!Array.isArray(b.products)||b.products.length>100||!b.products.every(valid)||new Set(b.products.map(x=>x.id)).size!==b.products.length)return json(res,400,{error:'invalid_catalog'});const cx=await pool.connect();try{await cx.query('BEGIN');await cx.query('DELETE FROM products WHERE NOT(id=ANY($1::text[]))',[b.products.map(p=>p.id)]);for(const p of b.products){
+   await cx.query('INSERT INTO products(id,name,description,price_cents,checkout_url,image_url,published) VALUES($1,$2,$3,$4,$5,$6,$7) ON CONFLICT (id) DO UPDATE SET name=excluded.name,description=excluded.description,price_cents=excluded.price_cents,checkout_url=excluded.checkout_url,image_url=excluded.image_url,published=excluded.published,updated_at=now()',[p.id,p.name,p.description,p.price_cents,p.checkout_url,p.image_url,p.published]);
+   await cx.query('INSERT INTO product_checkout_links(product_id,provider,checkout_url) VALUES($1,$2,$3) ON CONFLICT (product_id,provider) DO UPDATE SET checkout_url=excluded.checkout_url,updated_at=now()',[p.id,checkoutProvider(p.checkout_url),p.checkout_url]);
+ }await cx.query('INSERT INTO catalog_revisions(catalog,action) VALUES($1,$2)',[JSON.stringify(b.products),'draft_save']);await cx.query('INSERT INTO admin_audit(event,detail) VALUES($1,$2)',['draft_save',JSON.stringify({count:b.products.length})]);await cx.query('COMMIT');return json(res,200,{saved:b.products.length,published_to_site:false});}catch(e){await cx.query('ROLLBACK');throw e;}finally{cx.release();}}
  // Preview compares the exact database draft with the current GitHub storefront.
 
  if(route==='/api/public-catalog'&&req.method==='GET'){
@@ -109,7 +109,7 @@ const server=http.createServer(async(req,res)=>{res.setHeader('X-Frame-Options',
      return json(res,200,{catalog_digest:publisher.digest(draft),current_version:Number(pub?.version||0),
        changes:draft.map(p=>({product:p.id,title:p.name,description:p.description,price:'R$ '+(p.price_cents/100).toFixed(2).replace('.',','),checkout:p.checkout_url})),
        changed,publisher_enabled:true,store_url:'https://nexa-digital-academy.onrender.com',
-       restrictions:'Dois produtos existentes; links Kiwify. Edicoes de produtos novos e imagens aguardam suporte.'});
+       restrictions:'Dois e-books existentes; checkouts oficiais Kiwify ou Eduzz. Edicoes em plataformas externas e imagens aguardam integracao.'});
    }catch(e){return json(res,409,{error:e.message==='site_template_changed'?'site_template_changed':'catalog_not_publishable'});}
  }
  if(route==='/api/publish'&&req.method==='POST'){
@@ -124,7 +124,7 @@ const server=http.createServer(async(req,res)=>{res.setHeader('X-Frame-Options',
      if(!pub||Number(pub.version)!==reqBody.current_version){await cx.query('ROLLBACK');return json(res,409,{error:'catalog_changed_since_preview'});}
      const draft=(await cx.query('SELECT id,name,description,price_cents,checkout_url,image_url,published FROM products ORDER BY id')).rows;
      if(publisher.digest(draft)!==reqBody.catalog_digest){await cx.query('ROLLBACK');return json(res,409,{error:'catalog_changed_since_preview'});}
-     // Existing site only supports two products and official Kiwify checkouts.
+     // The store supports two existing products and checkout URLs from approved providers.
      publisher.assertCatalog(draft);
      if(publisher.digest(pub.catalog)===publisher.digest(draft)){await cx.query('ROLLBACK');return json(res,200,{ok:true,changed:false});}
      await cx.query('UPDATE published_catalog SET catalog=$1::jsonb,version=version+1,published_at=now() WHERE id=1',[JSON.stringify(draft)]);
