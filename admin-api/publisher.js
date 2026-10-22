@@ -1,5 +1,6 @@
 'use strict';
 const crypto=require('node:crypto');
+const {checkoutProvider}=require('./checkout');
 const REPO='felipemoura-code/nexa-digital-academy';
 const FILE='index.html';
 const BRANCH='main';
@@ -19,8 +20,7 @@ function assertCatalog(products){
     if(typeof p.name!=='string'||!p.name.trim()||p.name.length>160)throw Error('invalid_catalog');
     if(typeof p.description!=='string'||p.description.length>4000)throw Error('invalid_catalog');
     if(!Number.isSafeInteger(p.price_cents)||p.price_cents<0)throw Error('invalid_catalog');
-    const url=new URL(p.checkout_url);
-    if(url.protocol!=='https:'||url.hostname!=='pay.kiwify.com.br'||url.username||url.password||url.search||url.hash||!/^\/[a-zA-Z0-9_-]{5,80}\/?$/.test(url.pathname))throw Error('invalid_checkout');
+    if(!checkoutProvider(p.checkout_url))throw Error('invalid_checkout');
   }
 }
 function changeOne(html,spec,p){
