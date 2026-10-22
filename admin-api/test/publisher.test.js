@@ -77,3 +77,12 @@ test('draft digest independent of product order',()=>{
  const c=catalog();
  assert.equal(digest(c),digest([...c].reverse()));
 });
+
+test('digest uses canonical fields even when JSONB returns properties in another order',()=>{
+ const c=catalog();
+ const asJsonb=c.map(p=>({
+   published:p.published,checkout_url:p.checkout_url,price_cents:p.price_cents,
+   description:p.description,id:p.id,image_url:p.image_url,name:p.name
+ }));
+ assert.equal(digest(c),digest(asJsonb));
+});
