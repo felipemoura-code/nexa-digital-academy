@@ -4,7 +4,7 @@
  const products=[['dinheiro-no-controle','financas'],['ia-na-pratica','ia']];
  const valid=(p)=>p&&typeof p.name==='string'&&typeof p.description==='string'&&Number.isInteger(p.price_cents)&&p.price_cents>=0&&p.price_cents<=100000000&&typeof p.checkout_url==='string'&&p.published===true;
  function checkout(url){
-   try{const u=new URL(url);return u.protocol==='https:'&&u.hostname==='pay.kiwify.com.br'&&!u.username&&!u.password&&!u.search&&!u.hash&&/^\/[a-zA-Z0-9_-]{5,80}\/?$/.test(u.pathname);}catch{return false;}
+   try{const u=new URL(url);return u.protocol==='https:'&&!u.username&&!u.password&&!u.port&&!u.search&&!u.hash&&((u.hostname==='pay.kiwify.com.br'&&/^\/[a-zA-Z0-9_-]{5,80}\/?$/.test(u.pathname))||(['chk.eduzz.com','sun.eduzz.com'].includes(u.hostname)&&/^\/[a-zA-Z0-9_-]{2,128}\/?$/.test(u.pathname)));}catch{return false;}
  }
  function text(selector,node,value){const el=node.querySelector(selector);if(el)el.textContent=value;}
  function render(data){
