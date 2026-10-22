@@ -58,7 +58,7 @@ function renderSite(html,products){
   next=next.slice(0,factsOpen)+updatedHero+next.slice(factsEnd+5);
   return {html:next,changes,changed:next!==html};
 }
-function digest(products){return crypto.createHash('sha256').update(JSON.stringify([...products].sort((a,b)=>a.id.localeCompare(b.id)))).digest('hex');}
+function digest(products){const normalized=[...products].map(p=>({id:p.id,name:p.name,description:p.description,price_cents:p.price_cents,checkout_url:p.checkout_url,image_url:p.image_url,published:p.published})).sort((a,b)=>a.id.localeCompare(b.id));return crypto.createHash('sha256').update(JSON.stringify(normalized)).digest('hex');}
 async function githubRequest(url,token,opts={}){
  const headers={'Accept':'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28','User-Agent':'NexaAdmin-Publisher',...(token?{'Authorization':'Bearer '+token}:{}),'Content-Type':'application/json'};
  const controller=new AbortController(); const timer=setTimeout(()=>controller.abort(),9000);
