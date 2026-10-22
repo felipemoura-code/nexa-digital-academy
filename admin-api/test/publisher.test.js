@@ -86,3 +86,22 @@ test('digest uses canonical fields even when JSONB returns properties in another
  }));
  assert.equal(digest(c),digest(asJsonb));
 });
+
+test('publishes an Eduzz checkout URL for selected product without changing other Kiwify checkout',()=>{
+ const c=catalog();
+ c[0].checkout_url='https://chk.eduzz.com/797ZQ5P80E';
+ const out=renderSite(fixture(),c);
+ assert.match(out.html,/href="https:\/\/chk\.eduzz\.com\/797ZQ5P80E"/);
+ assert.match(out.html,/href="https:\/\/pay\.kiwify\.com\.br\/smxRgiT"/);
+});
+test('rejects phishing lookalike and unsafe Eduzz checkout URLs',()=>{
+ for(const link of [
+   'https://chk.eduzz.com.evil.example/797ZQ5P80E',
+   'https://chk.eduzz.com/797ZQ5P80E?redirect=https://evil.example',
+   'http://chk.eduzz.com/797ZQ5P80E',
+   'https://sun.eduzz.com/123456#fragment'
+ ]){
+   const c=catalog();c[0].checkout_url=link;
+   assert.throws(()=>renderSite(fixture(),c),/invalid_checkout/);
+ }
+});
