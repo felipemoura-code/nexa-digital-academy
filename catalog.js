@@ -27,7 +27,7 @@
    const fact=document.querySelector('.facts li:last-child');
    if(fact){for(const node of fact.childNodes){if(node.nodeType===Node.TEXT_NODE){node.nodeValue=costs[0]===costs[1]?'R$ '+(costs[0]/100).toFixed(2).replace('.',',')+' cada':'Confira os preços abaixo';break;}}}
  }
- const abort=new AbortController(),timeout=setTimeout(()=>abort.abort(),6000);
+ const abort=new AbortController(),timeout=setTimeout(()=>abort.abort(),70000);
  fetch(API,{method:'GET',mode:'cors',credentials:'omit',cache:'no-store',signal:abort.signal})
    .then(r=>r.ok?r.json():Promise.reject(Error('unavailable'))).then(render).catch(()=>{})
    .finally(()=>clearTimeout(timeout));
