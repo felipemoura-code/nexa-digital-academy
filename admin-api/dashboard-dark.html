@@ -324,7 +324,7 @@
         const box=node('div','publish-item');
         box.append(node('strong','',item.title+' · '+item.price));
         box.append(node('p','','Descrição: '+(item.description||'—')));
-        box.append(node('p','','Checkout: '+item.checkout));
+        box.append(node('p','','Checkout da '+(checkoutProviderOf(item.checkout)==='eduzz'?'Eduzz':'Kiwify')+': '+item.checkout));
         $('publishItems').append(box);
       }
       $('publishState').textContent=data.changed?'Existem alterações a comparar e publicar.':'A loja já corresponde aos campos suportados do catálogo.';
