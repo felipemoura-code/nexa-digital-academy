@@ -60,7 +60,7 @@
           </div>
           <div class="two-grid">
             <section class="surface panel-chart"><div class="section-title"><div><h2>Preços do catálogo</h2><p>Comparação entre os produtos cadastrados</p></div><span class="meta-pill">Dados reais</span></div><div class="pricebars" id="priceBars"><p class="empty-hint">Carregando produtos...</p></div></section>
-            <section class="surface panel-system"><div class="section-title"><div><h2>Estado da loja</h2><p>Conexões e funcionalidades</p></div><span class="status-light"></span></div><div class="status-list"><div><span class="status-name"><span class="dot green"></span> Catálogo</span><strong>Banco Neon</strong></div><div><span class="status-name"><span class="dot orange"></span> Publicação automática</span><strong class="orange-text">Aguardando ativação</strong></div><div><span class="status-name"><span class="dot green"></span> Kiwify</span><strong id="kiwifyStatus">2 checkouts cadastrados</strong></div><div><span class="status-name"><span class="dot orange"></span> Eduzz</span><strong class="orange-text" id="eduzzStatus">Sem checkout cadastrado</strong></div></div><div class="system-note"><strong>Sobre as plataformas</strong><p>Os dois produtos usam links da Kiwify. A Eduzz está identificada no painel, mas ainda não tem checkout nem dados de vendas integrados. Receita e conversão permanecem indisponíveis.</p></div></section>
+            <section class="surface panel-system"><div class="section-title"><div><h2>Estado da loja</h2><p>Conexões e funcionalidades</p></div><span class="status-light"></span></div><div class="status-list"><div><span class="status-name"><span class="dot green"></span> Catálogo</span><strong>Banco Neon</strong></div><div><span class="status-name"><span class="dot orange" id="publishStatusDot"></span> Publicação pelo painel</span><strong class="orange-text" id="publishDashboardStatus">Verificando...</strong></div><div><span class="status-name"><span class="dot green"></span> Kiwify</span><strong id="kiwifyStatus">2 checkouts cadastrados</strong></div><div><span class="status-name"><span class="dot orange"></span> Eduzz</span><strong class="orange-text" id="eduzzStatus">Sem checkout cadastrado</strong></div></div><div class="system-note"><strong>Sobre as plataformas</strong><p id="platformSystemNote">A loja pública usa os links da Kiwify. A Eduzz tem os checkouts cadastrados no painel, mas nenhuma das duas plataformas está conectada para consultar pedidos ou faturamento. Receita e conversão reais permanecem indisponíveis.</p></div></section>
           </div>
           <section class="surface data-surface"><div class="section-title"><div><h2>Seus produtos</h2><p>Cadastro e links de pagamento</p></div><button type="button" id="openProducts" class="text-action">Gerenciar produtos ↗</button></div><div class="tablewrap"><table><thead><tr><th>Produto</th><th>Preço</th><th>Status do rascunho</th><th>Ação</th></tr></thead><tbody id="dashboardProducts"></tbody></table></div></section>
         </section>
@@ -109,7 +109,7 @@
             <p class="field-help" id="publishHelp">Faça a revisão antes de publicar; nenhuma senha adicional é necessária.</p>
           </section>
         </section>
-        <section data-screen="settings" class="screen" hidden><div class="page-intro"><div><div class="eyebrow">SISTEMA</div><h1>Configurações</h1><p>Conexões e informações da administração.</p></div></div><section class="surface settings-box"><h2>Informações do ambiente</h2><dl><div><dt>Área administrativa</dt><dd>Protegida por senha e sessão</dd></div><div><dt>Armazenamento de rascunhos</dt><dd>Banco Neon</dd></div><div><dt>Loja pública</dt><dd>Nexa Digital Academy no Render</dd></div><div><dt>Checkouts usados no site</dt><dd>Kiwify — 2 produtos</dd></div><div><dt>Eduzz</dt><dd class="orange-text" id="eduzzSettingsStatus">Checkout não cadastrado · API não conectada</dd></div><div><dt>Publicação no site</dt><dd class="orange-text">Publicação direta pelo banco, sujeita a homologação</dd></div></dl><div class="settings-actions"><button type="button" id="backupSettings" class="outline-btn">↓ Exportar catálogo</button><button type="button" id="logoutSettings" class="danger-btn">Encerrar sessão</button></div></section></section>
+        <section data-screen="settings" class="screen" hidden><div class="page-intro"><div><div class="eyebrow">SISTEMA</div><h1>Configurações</h1><p>Conexões e informações da administração.</p></div></div><section class="surface settings-box"><h2>Informações do ambiente</h2><dl><div><dt>Área administrativa</dt><dd>Protegida por senha e sessão</dd></div><div><dt>Armazenamento de rascunhos</dt><dd>Banco Neon</dd></div><div><dt>Loja pública</dt><dd>Nexa Digital Academy no Render</dd></div><div><dt>Checkouts usados no site</dt><dd>Kiwify — 2 produtos</dd></div><div><dt>Eduzz</dt><dd class="orange-text" id="eduzzSettingsStatus">Checkout não cadastrado · API não conectada</dd></div><div><dt>Publicação no site</dt><dd class="orange-text">Disponível para os dois e-books · teste real pendente</dd></div></dl><div class="settings-actions"><button type="button" id="backupSettings" class="outline-btn">↓ Exportar catálogo</button><button type="button" id="logoutSettings" class="danger-btn">Encerrar sessão</button></div></section></section>
       </main>
       <footer class="footer"><span>© 2026 Nexa Digital Academy</span><span>Painel de gestão · Dados do catálogo</span></footer>
     </div>
@@ -221,7 +221,7 @@
     try{
       const result=await api('products',{method:'PUT',body:JSON.stringify({products:items})});
       if(result.published_to_site!==false)throw Error('Resposta inesperada do servidor.');
-      products=items;draftNew=null;dirty=false;notify(message);updateDashboard();renderProducts();
+      products=items;draftNew=null;dirty=false;notify(message);updateDashboard();renderProducts();loadPublishStatus();
     }catch(error){notify(error.message,true);}finally{busy=false;$('saveProduct').disabled=false;$('removeProduct').disabled=false;}
   }
   function backup(){
@@ -261,6 +261,24 @@
     }catch(e){target.replaceChildren(node('p','empty-hint','Não foi possível carregar o histórico.'));}
   }
   async function logout(){try{await api('logout',{method:'POST'});location.assign('/login');}catch(e){notify(e.message,true);}}
+  async function loadPublishStatus(){
+    const value=$('publishDashboardStatus'),dot=$('publishStatusDot');
+    if(!value||!dot)return;
+    value.textContent='Verificando...';
+    try{
+      const p=await api('publish/preview');
+      if(!p.publisher_enabled)throw Error('not_enabled');
+      dot.classList.remove('orange');dot.classList.add('green');
+      value.classList.remove('orange-text');
+      value.textContent=p.changed?'Disponível · alterações pendentes':'Disponível · catálogo atualizado';
+      value.title='Publicação direta no banco; primeiro teste de ponta a ponta ainda pendente.';
+    }catch(e){
+      dot.classList.remove('green');dot.classList.add('orange');
+      value.classList.add('orange-text');
+      value.textContent='Revisão necessária';
+      value.title='Abra a aba Publicar para verificar: '+(e.message||'falha ao consultar prévia');
+    }
+  }
   let publishPreview=null;
   async function loadPublishPreview(){
     publishPreview=null;
@@ -296,6 +314,7 @@
     try{
       const r=await api('publish',{method:'POST',body:JSON.stringify({current_version:publishPreview.current_version,catalog_digest:publishPreview.catalog_digest,confirm_checkout_prices:true})});
       notify(r.changed?'Catálogo publicado com sucesso. A loja já pode receber a nova versão.':'A loja já está atualizada.');
+      await loadPublishStatus();
       await loadPublishPreview();
     }catch(error){notify(error.message,true);await loadPublishPreview();}
   }
@@ -345,6 +364,7 @@
       $('kiwifyStatus').textContent=kc+' checkouts cadastrados';
       $('eduzzStatus').textContent=ec?ec+' checkouts cadastrados · API não conectada':'Sem checkout cadastrado';
       $('eduzzSettingsStatus').textContent=ec?ec+' links cadastrados · API não conectada':'Checkout não cadastrado · API não conectada';
+      $('platformSystemNote').textContent='A loja pública usa dois checkouts da Kiwify. A Eduzz tem '+ec+' de 2 checkouts cadastrados no painel. Nenhuma das plataformas tem API de vendas conectada; receita e conversão reais seguem indisponíveis.';
       $('providerMessage').textContent='Os links estão armazenados com acesso protegido. Nenhuma conta de vendas foi conectada por API.';
     }catch(e){$('providerMessage').textContent='Não foi possível consultar os checkouts: '+e.message;}
   }
@@ -383,7 +403,7 @@
       csrf=(await api('session')).csrf;
       products=(await api('products')).products;
       selectedId=products[0]?.id||null;
-      updateDashboard();renderProducts();loadProviders();
+      updateDashboard();renderProducts();loadProviders();loadPublishStatus();
     }catch(error){notify(error.message,true);}
   }
   init();
