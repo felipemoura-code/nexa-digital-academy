@@ -73,12 +73,21 @@ const server=http.createServer(async(req,res)=>{res.setHeader('X-Frame-Options',
    const client=await pool.connect();
    try{
      await client.query('BEGIN');
+     const locked=(await client.query('SELECT checkout_url FROM products WHERE id=$1 FOR UPDATE',[b.product_id])).rows[0];
+     if(!locked){await client.query('ROLLBACK');return json(res,404,{error:'product_not_found'});}
+     const selectedEduzz=checkoutProvider(locked.checkout_url)==='eduzz';
+     if(!url&&selectedEduzz){await client.query('ROLLBACK');return json(res,409,{error:'cannot_remove_checkout_selected_for_draft'});}
      if(url)await client.query(`INSERT INTO product_checkout_links(product_id,provider,checkout_url) VALUES($1,'eduzz',$2) ON CONFLICT (product_id,provider) DO UPDATE SET checkout_url=excluded.checkout_url,updated_at=now()`,[b.product_id,url]);
+     if(url&&selectedEduzz&&locked.checkout_url!==url){
+       await client.query('UPDATE products SET checkout_url=$2,updated_at=now() WHERE id=$1',[b.product_id,url]);
+       const snapshot=(await client.query('SELECT id,name,description,price_cents,checkout_url,image_url,published FROM products ORDER BY id')).rows;
+       await client.query('INSERT INTO catalog_revisions(catalog,action) VALUES($1,$2)',[JSON.stringify(snapshot),'draft_save']);
+     }
      else await client.query("DELETE FROM product_checkout_links WHERE product_id=$1 AND provider='eduzz'",[b.product_id]);
      await client.query('INSERT INTO admin_audit(event,detail) VALUES($1,$2)',[
        'eduzz_checkout_configured',JSON.stringify({product_id:b.product_id,configured:!!url})]);
      await client.query('COMMIT');
-     return json(res,200,{ok:true,configured:!!url,saved_to_database:true,site_changed:false,sales_api_connected:false});
+     return json(res,200,{ok:true,configured:!!url,saved_to_database:true,site_changed:false,draft_checkout_updated:!!(url&&selectedEduzz&&locked.checkout_url!==url),sales_api_connected:false});
    }catch(e){await client.query('ROLLBACK');throw e;}finally{client.release();}
  }
  if(route==='/api/products'&&req.method==='GET'){if(!await requireAuth(req,res))return;const r=await pool.query('SELECT id,name,description,price_cents,checkout_url,image_url,published FROM products ORDER BY id');return json(res,200,{products:r.rows});}
