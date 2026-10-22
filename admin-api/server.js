@@ -106,7 +106,7 @@ const server=http.createServer(async(req,res)=>{res.setHeader('X-Frame-Options',
      const pub=(await pool.query('SELECT catalog,version FROM published_catalog WHERE id=1')).rows[0];
      const current=pub?.catalog||[];
      const changed=publisher.digest(draft)!==publisher.digest(current);
-     return json(res,200,{catalog_digest:publisher.digest(draft),current_version:pub?.version||0,
+     return json(res,200,{catalog_digest:publisher.digest(draft),current_version:Number(pub?.version||0),
        changes:draft.map(p=>({product:p.id,title:p.name,description:p.description,price:'R$ '+(p.price_cents/100).toFixed(2).replace('.',','),checkout:p.checkout_url})),
        changed,publisher_enabled:true,store_url:'https://nexa-digital-academy.onrender.com',
        restrictions:'Dois produtos existentes; links Kiwify. Edicoes de produtos novos e imagens aguardam suporte.'});
@@ -121,7 +121,7 @@ const server=http.createServer(async(req,res)=>{res.setHeader('X-Frame-Options',
    try{
      await cx.query('BEGIN');
      const pub=(await cx.query('SELECT catalog,version FROM published_catalog WHERE id=1 FOR UPDATE')).rows[0];
-     if(!pub||pub.version!==reqBody.current_version){await cx.query('ROLLBACK');return json(res,409,{error:'catalog_changed_since_preview'});}
+     if(!pub||Number(pub.version)!==reqBody.current_version){await cx.query('ROLLBACK');return json(res,409,{error:'catalog_changed_since_preview'});}
      const draft=(await cx.query('SELECT id,name,description,price_cents,checkout_url,image_url,published FROM products ORDER BY id')).rows;
      if(publisher.digest(draft)!==reqBody.catalog_digest){await cx.query('ROLLBACK');return json(res,409,{error:'catalog_changed_since_preview'});}
      // Existing site only supports two products and official Kiwify checkouts.
