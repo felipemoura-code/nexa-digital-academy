@@ -371,8 +371,10 @@
         if(url&&!/^https:\/\/(?:sun|chk)\.eduzz\.com\/[a-zA-Z0-9_-]{2,128}\/?$/.test(url)){notify('Use um checkout oficial da Eduzz: https://chk.eduzz.com/...',true);return;}
         busy=true;save.disabled=true;
         try{
-          await api('providers/eduzz-checkout',{method:'PUT',body:JSON.stringify({product_id:p.id,checkout_url:url})});
-          notify(url?'Checkout Eduzz salvo no banco. Loja pública não alterada.':'Checkout Eduzz removido do cadastro.');
+          const response=await api('providers/eduzz-checkout',{method:'PUT',body:JSON.stringify({product_id:p.id,checkout_url:url})});
+          products=(await api('products')).products;
+          updateDashboard();renderProducts();loadPublishStatus();
+          notify(response.draft_checkout_updated?'Checkout Eduzz atualizado no rascunho. Confira a aba Publicar.':url?'Checkout Eduzz salvo no banco. Loja pública não alterada.':'Checkout Eduzz removido do cadastro.');
           await loadProviders();
         }catch(e){notify(e.message,true);}finally{busy=false;save.disabled=false;}
       });
