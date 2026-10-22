@@ -2,6 +2,8 @@
 const fs=require('node:fs');
 const publisher=require('./publisher');
 const {checkoutProvider}=require('./checkout');
+const providerApi=require('./provider-api');
+const providerTestTimes=new Map();
 const http=require('node:http'),crypto=require('node:crypto'),{Pool}=require('pg');
 const db=process.env.DATABASE_URL||'',secret=process.env.SESSION_SECRET||'',port=Number(process.env.PORT||3000);
 // O proprietario pode configurar ADMIN_PASSWORD diretamente como segredo no Render.
@@ -60,7 +62,27 @@ const server=http.createServer(async(req,res)=>{res.setHeader('X-Frame-Options',
    if(!await requireAuth(req,res))return;
    const checkouts=await pool.query('SELECT product_id,provider,checkout_url,updated_at FROM product_checkout_links ORDER BY product_id,provider');
    const states=await pool.query('SELECT provider,connection_status,linked_at FROM provider_connections ORDER BY provider');
-   return json(res,200,{checkouts:checkouts.rows,connections:states.rows,checkout_note:'Checkout cadastrado não significa conta conectada à API.'});
+   const env=providerApi.configured();
+   const connections=states.rows.map(x=>({...x,credentials_configured:!!env[x.provider],api_verified:!!env[x.provider]&&x.connection_status==='connected'}));
+   return json(res,200,{checkouts:checkouts.rows,connections,checkout_note:'Os testes validam acesso de leitura a produtos e vendas, sem importar dados ou alterar contas.'});
+ }
+ if(route==='/api/providers/test'&&req.method==='POST'){
+   if(!await requireAuth(req,res,true))return;
+   const body=await parse(req,512);
+   if(!body||!['kiwify','eduzz'].includes(body.provider))return json(res,400,{error:'invalid_provider'});
+   const provider=body.provider,now=Date.now();
+   if(now-(providerTestTimes.get(provider)||0)<30000)return json(res,429,{error:'wait_before_retest'});
+   providerTestTimes.set(provider,now);
+   const result=await providerApi.testProvider(provider);
+   if(result.code!=='missing_credentials'){
+     await pool.query("UPDATE provider_connections SET connection_status=$2,linked_at=CASE WHEN $2='connected' THEN now() ELSE NULL END,updated_at=now() WHERE provider=$1",[
+       provider,result.ok?'connected':'error'
+     ]);
+     await pool.query('INSERT INTO admin_audit(event,detail) VALUES($1,$2)',[
+       'provider_api_test',JSON.stringify({provider,success:result.ok,code:result.code||'ok',scopes_verified:result.scopes_verified||[]})
+     ]);
+   }
+   return json(res,result.ok?200:422,{...result,provider,credentials_exposed:false,site_changed:false,sales_imported:false});
  }
  if(route==='/api/providers/eduzz-checkout'&&req.method==='PUT'){
    if(!await requireAuth(req,res,true))return;
