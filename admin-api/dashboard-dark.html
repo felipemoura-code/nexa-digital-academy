@@ -18,6 +18,8 @@
 .provider-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}.provider-panel{padding:28px}.provider-links{display:grid;gap:16px;margin-top:22px}.provider-link-row{padding:17px;border:1px solid var(--line);border-radius:10px;background:var(--surface2)}.provider-link-row strong{display:block;font-size:13px;margin-bottom:7px}.provider-link-row p{font-size:11px;color:var(--muted);overflow-wrap:anywhere}.provider-link-row input{display:block;width:100%;padding:11px 12px;background:var(--surface3);border:1px solid #46484a;color:var(--fg);border-radius:7px;font-size:12px;min-width:0;margin:9px 0}.provider-link-row .outline-btn,.provider-link-row .primary-btn{font-size:11px;margin-top:8px}.provider-guide{color:var(--accent);font-size:11px;display:inline-block;margin-top:17px;text-underline-offset:3px}.provider-link-row .provider-row-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.provider-pill{display:inline-block;font-size:10px;color:#bbd6c3;margin-top:5px}@media(max-width:1000px){.provider-grid{grid-template-columns:1fr}}@media(max-width:490px){.provider-panel{padding:20px 17px}}
 
 .activity-item{align-items:center;flex-wrap:wrap}.activity-item .outline-btn{margin-left:auto;font-size:11px;white-space:nowrap}.activity-item>div:nth-child(2){flex:1;min-width:160px}@media(max-width:490px){.activity-item .outline-btn{margin-left:0}}
+
+.platform-editor-note{padding:15px 17px;background:var(--surface2);border:1px solid var(--line);border-radius:10px;line-height:1.6;margin:5px 0 15px;color:var(--muted)}.platform-editor-note strong{color:var(--fg)}
 </style>
   
 </head>
@@ -74,7 +76,9 @@
               <div class="field"><label for="productName">Nome do produto</label><input required id="productName" maxlength="160" autocomplete="off"></div>
               <div class="field"><label for="productDescription">Descrição</label><textarea id="productDescription" rows="4" maxlength="4000" placeholder="Descreva seu material digital"></textarea></div>
               <div class="field two-fields"><div><label for="productPrice">Preço (R$)</label><input id="productPrice" type="number" min="0" step="0.01" inputmode="decimal" required></div><div><label for="productVisibility">Visibilidade no rascunho</label><select id="productVisibility"><option value="true">Visível</option><option value="false">Oculto</option></select></div></div>
-              <div class="field"><label for="productCheckout">Link do checkout Kiwify</label><input id="productCheckout" type="url" placeholder="https://pay.kiwify.com.br/..." required spellcheck="false"><small>Use o link oficial do checkout, não a página de vendas.</small></div>
+              <div class="field"><label for="productCheckoutPlatform">Plataforma de pagamento do botão Comprar na minha loja</label><select id="productCheckoutPlatform"><option value="kiwify">Kiwify</option><option value="eduzz">Eduzz</option></select><small>Escolha a plataforma para o seu site. Os links das duas plataformas continuam salvos separadamente.</small></div>
+              <div class="field"><label for="productCheckout">Checkout selecionado para esta vitrine</label><input id="productCheckout" type="url" placeholder="https://pay.kiwify.com.br/..." required spellcheck="false"><small id="checkoutEditorHelp">Este checkout será usado no botão Comprar após salvar o rascunho e publicar.</small></div>
+              <div class="field-help platform-editor-note">Atenção: editar nome, preço ou descrição aqui muda sua <strong>loja Nexa</strong> depois de publicar. <strong>Não altera o produto nem o preço dentro da Kiwify ou Eduzz.</strong></div>
               <div class="field"><label for="productImage">URL da imagem de capa</label><input id="productImage" type="url" placeholder="https://..." spellcheck="false"><small>Opcional. Upload direto ficará disponível em uma próxima etapa.</small></div>
               <div class="editor-actions"><button id="saveProduct" class="primary-btn" type="submit">Salvar rascunho</button><button id="removeProduct" type="button" class="danger-btn">Excluir produto</button></div>
               <p class="field-help" id="editorNotice">As alterações serão armazenadas no banco, mas não publicadas na loja.</p>
@@ -103,8 +107,8 @@
             <div class="section-title"><div><h2>Prévia do catálogo</h2><p>Comparação do rascunho salvo com a página atual no GitHub.</p></div><span class="meta-pill">Revisão obrigatória</span></div>
             <p id="publishState" class="field-help">Abra esta seção para conferir os dados.</p>
             <div id="publishItems" class="publish-items"></div>
-            <p class="field-help">A publicação altera apenas nome, descrição, preço exibido e link dos <strong>dois e-books existentes</strong>. Não altera preços na Kiwify, não cria novos produtos e não envia capas. Após publicar, confira o valor real nos dois checkouts.</p>
-            <label class="publish-confirm"><input id="confirmPrices" type="checkbox"> Conferi que os preços cadastrados na Kiwify são iguais aos que aparecerão na loja.</label>
+            <p class="field-help">A publicação altera apenas nome, descrição, preço exibido e a plataforma de checkout escolhida nos <strong>dois e-books existentes</strong>. Não altera anúncios, títulos ou preços dentro da Kiwify ou Eduzz, não cria novos produtos e não envia capas. Confira os valores reais na plataforma escolhida.</p>
+            <label class="publish-confirm"><input id="confirmPrices" type="checkbox"> Conferi os preços reais na plataforma de pagamento selecionada para cada e-book.</label>
             <div class="editor-actions"><button id="publishNow" type="button" class="primary-btn" disabled>Publicar alterações</button><a class="outline-btn" href="https://nexa-digital-academy.onrender.com/#ebooks" target="_blank" rel="noopener noreferrer">Ver loja ↗</a></div>
             <p class="field-help" id="publishHelp">Faça a revisão antes de publicar; nenhuma senha adicional é necessária.</p>
           </section>
@@ -190,14 +194,37 @@
     }
     renderEditor();
   }
+  function checkoutProviderOf(url){
+    try{
+      const u=new URL(url);
+      if(u.hostname==='pay.kiwify.com.br')return 'kiwify';
+      if(u.hostname==='chk.eduzz.com'||u.hostname==='sun.eduzz.com')return 'eduzz';
+    }catch{}
+    return null;
+  }
+  function savedPlatformLink(id,provider){
+    return currentProviders?.checkouts?.find(x=>x.product_id===id&&x.provider===provider)?.checkout_url||'';
+  }
+  function updateCheckoutPlatform(useRegisteredLink=false){
+    const provider=$('productCheckoutPlatform').value,p=currentProduct();
+    const link=savedPlatformLink(p?.id,provider);
+    if(useRegisteredLink){
+      if(link)$('productCheckout').value=link;
+      else if(checkoutProviderOf($('productCheckout').value)!==provider)$('productCheckout').value='';
+    }
+    $('productCheckout').placeholder=provider==='eduzz'?'https://chk.eduzz.com/...':'https://pay.kiwify.com.br/...';
+    $('checkoutEditorHelp').textContent=link
+      ?'Link '+(provider==='eduzz'?'Eduzz':'Kiwify')+' cadastrado. Salve o rascunho e publique para alterar o botão Comprar da Nexa.'
+      :'Checkout '+(provider==='eduzz'?'Eduzz':'Kiwify')+' ainda não cadastrado neste produto. Informe um link oficial ou cadastre-o na aba Plataformas.';
+  }
   function renderEditor(){
     const p=currentProduct();$('productForm').hidden=!p;$('noSelection').hidden=!!p;
     $('editorTitle').textContent=p?(draftNew?.id===p.id?'Novo produto':p.name):'Selecione um produto';
     if(!p)return;
     $('productName').value=p.name;$('productDescription').value=p.description||'';$('productPrice').value=(p.price_cents/100).toFixed(2);
-    $('productCheckout').value=p.checkout_url||'';$('productImage').value=p.image_url||'';$('productVisibility').value=String(!!p.published);
+    $('productCheckout').value=p.checkout_url||'';$('productCheckoutPlatform').value=checkoutProviderOf(p.checkout_url)||'kiwify';updateCheckoutPlatform();$('productImage').value=p.image_url||'';$('productVisibility').value=String(!!p.published);
     $('draftBadge').textContent=draftNew?.id===p.id?'Novo rascunho':'Rascunho';
-    $('editorNotice').textContent='Alterações salvas no banco. A loja pública não é modificada nesta versão.';
+    $('editorNotice').textContent='Esta edição altera somente a vitrine da Nexa após Publicar. O anúncio e o preço dentro da plataforma de pagamentos não mudam.';
   }
   function newProduct(){
     if(!discardChanges())return;
@@ -211,8 +238,11 @@
     if(amount===null)throw Error('Informe um preço válido.');
     const name=$('productName').value.trim();if(!name)throw Error('Informe o nome do produto.');
     const checkout=$('productCheckout').value.trim();
-    let url;try{url=new URL(checkout);}catch{throw Error('Informe um checkout válido da Kiwify.');}
-    if(url.protocol!=='https:'||url.hostname!=='pay.kiwify.com.br'||url.username||url.password||url.search||url.hash||!/^\/[a-zA-Z0-9_-]{5,80}\/?$/.test(url.pathname))throw Error('Use um checkout oficial https://pay.kiwify.com.br/...');
+    let url;try{url=new URL(checkout);}catch{throw Error('Informe o checkout válido da plataforma selecionada.');}
+    const provider=$('productCheckoutPlatform').value;
+    const isKiwify=provider==='kiwify'&&url.hostname==='pay.kiwify.com.br'&&/^\/[a-zA-Z0-9_-]{5,80}\/?$/.test(url.pathname);
+    const isEduzz=provider==='eduzz'&&['chk.eduzz.com','sun.eduzz.com'].includes(url.hostname)&&/^\/[a-zA-Z0-9_-]{2,128}\/?$/.test(url.pathname);
+    if(url.protocol!=='https:'||url.username||url.password||url.port||url.search||url.hash||!(isKiwify||isEduzz))throw Error('Confira o checkout oficial da '+(provider==='eduzz'?'Eduzz':'Kiwify')+' selecionado.');
     const image=$('productImage').value.trim();if(image){try{const u=new URL(image);if(u.protocol!=='https:'||u.username||u.password||u.hash)throw 0;}catch{throw Error('A capa precisa ter URL HTTPS válida.');}}
     return {...original,name,description:$('productDescription').value,price_cents:amount,checkout_url:checkout,image_url:image,published:$('productVisibility').value==='true'};
   }
@@ -221,7 +251,7 @@
     try{
       const result=await api('products',{method:'PUT',body:JSON.stringify({products:items})});
       if(result.published_to_site!==false)throw Error('Resposta inesperada do servidor.');
-      products=items;draftNew=null;dirty=false;notify(message);updateDashboard();renderProducts();loadPublishStatus();
+      products=items;draftNew=null;dirty=false;notify(message);updateDashboard();renderProducts();loadPublishStatus();loadProviders();
     }catch(error){notify(error.message,true);}finally{busy=false;$('saveProduct').disabled=false;$('removeProduct').disabled=false;}
   }
   function backup(){
@@ -309,7 +339,7 @@
   }
   async function publishToStore(){
     if(!publishPreview?.publisher_enabled||!publishPreview.changed||!$('confirmPrices').checked)return;
-    if(!confirm('Publicar os dois produtos na loja agora? Os preços da Kiwify NÃO são alterados automaticamente.'))return;
+    if(!confirm('Publicar os dois produtos na loja agora? Os produtos e preços dentro da Kiwify e Eduzz NÃO são alterados.'))return;
     $('publishNow').disabled=true;
     try{
       const r=await api('publish',{method:'POST',body:JSON.stringify({current_version:publishPreview.current_version,catalog_digest:publishPreview.catalog_digest,confirm_checkout_prices:true})});
@@ -325,7 +355,7 @@
     const matching=links.find(x=>x.product_id===p.id&&x.provider===which);
     if(which==='kiwify'){
       item.append(node('p','',matching?.checkout_url||p.checkout_url||'Sem checkout cadastrado'));
-      item.append(node('span','provider-pill','Checkout no site · API de vendas não conectada'));
+      item.append(node('span','provider-pill',checkoutProviderOf(p.checkout_url)==='kiwify'?'Selecionado no rascunho · API não conectada':'Checkout cadastrado · API não conectada'));
     }else{
       const label=node('label','', 'Checkout Eduzz (HTTPS)');
       const field=document.createElement('input');field.type='url';field.autocomplete='off';field.spellcheck=false;
@@ -334,7 +364,7 @@
       label.append(field);item.append(label);
       const actions=node('div','provider-row-actions');
       const save=node('button','primary-btn','Salvar checkout');save.type='button';
-      const check=node('span','provider-pill',matching?'Link salvo · não publicado':'Nenhum link cadastrado');
+      const check=node('span','provider-pill',matching?(checkoutProviderOf(p.checkout_url)==='eduzz'?'Selecionado no rascunho':'Link cadastrado · não selecionado'):'Nenhum link cadastrado');
       save.addEventListener('click',async()=>{
         if(busy)return;
         const url=field.value.trim();
@@ -366,6 +396,7 @@
       $('eduzzSettingsStatus').textContent=ec?ec+' links cadastrados · API não conectada':'Checkout não cadastrado · API não conectada';
       $('platformSystemNote').textContent='A loja pública usa dois checkouts da Kiwify. A Eduzz tem '+ec+' de 2 checkouts cadastrados no painel. Nenhuma das plataformas tem API de vendas conectada; receita e conversão reais seguem indisponíveis.';
       $('providerMessage').textContent='Os links estão armazenados com acesso protegido. Nenhuma conta de vendas foi conectada por API.';
+      if(!dirty&&$('productForm').hidden===false)updateCheckoutPlatform();
     }catch(e){$('providerMessage').textContent='Não foi possível consultar os checkouts: '+e.message;}
   }
   function bindings(){
@@ -382,6 +413,7 @@
     $('confirmPrices').addEventListener('change',togglePublish);
     $('publishNow').addEventListener('click',publishToStore);
     $('productSearch').addEventListener('input',renderProducts);$('productFilter').addEventListener('change',renderProducts);
+    $('productCheckoutPlatform').addEventListener('change',()=>updateCheckoutPlatform(true));
     $('productForm').addEventListener('input',()=>{dirty=true;});$('productForm').addEventListener('change',()=>{dirty=true;});
     $('productForm').addEventListener('submit',async ev=>{
       ev.preventDefault();let item;try{item=readForm();}catch(e){notify(e.message,true);return;}
